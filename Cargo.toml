@@ -5,7 +5,7 @@ authors = ["Graham Christensen <graham@grahamc.com>"]
 edition = "2018"
 license = "MIT"
 publish = false
-description = "Sync nipkgs maintainers with a read-only maintainer group. Implementation of NixOS/rfcs#39."
+description = "Sync nixpkgs maintainers with a read-only maintainer group. Implementation of NixOS/rfcs#39."
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
