@@ -11,3 +11,4 @@ description = "Sync nipkgs maintainers with a read-only maintainer group. Implem
 
 [dependencies]
 hubcaps = "0.5.0"
+structopt = "0.2.18"
