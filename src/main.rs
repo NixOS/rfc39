@@ -1,11 +1,16 @@
+//! Compare and sync maintainers from Nixpkgs to maintainers on
+//! GitHub Maintainer team, as described in RFC #39:
+//! https://github.com/NixOS/rfcs/blob/master/rfcs/0039-unprivileged-maintainer-teams.md
+
+#![warn(missing_docs)]
+
 #[macro_use]
 extern crate slog;
 
-use sloggers::terminal::{Destination, TerminalLoggerBuilder};
-use sloggers::types::Severity;
-use sloggers::Build;
 use std::path::PathBuf;
 use structopt::StructOpt;
+mod maintainers;
+use maintainers::MaintainerList;
 
 #[derive(Debug, StructOpt)]
 struct Options {
@@ -15,10 +20,7 @@ struct Options {
 }
 
 fn main() {
-    let mut builder = TerminalLoggerBuilder::new();
-    builder.level(Severity::Debug);
-    builder.destination(Destination::Stderr);
-    let logger = builder.build().unwrap();
+    let logger = rfc39::default_logger();
 
     let inputs = Options::from_args();
 
@@ -27,4 +29,7 @@ fn main() {
           "from" => inputs.maintainers.display(),
           "absolute" => maintainers_file.display()
     );
+
+    let maintainers = MaintainerList::load(logger, &maintainers_file);
+    println!("{:#?}", maintainers);
 }
