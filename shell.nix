@@ -8,6 +8,8 @@ pkgs.mkShell {
   buildInputs = with pkgs; [
     latest.rustChannels.stable.rust
     git
+    openssl
+    pkgconfig
   ];
 
   RUST_BACKTRACE = "1";
