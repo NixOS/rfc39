@@ -40,6 +40,15 @@ impl MaintainerList {
     }
 }
 
+impl IntoIterator for MaintainerList {
+    type Item = (Handle, Information);
+    type IntoIter = std::collections::hash_map::IntoIter<Handle, Information>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.maintainers.into_iter()
+    }
+}
+
 fn nix_instantiate_to_struct<T>(
     logger: slog::Logger,
     file: &Path,
