@@ -13,6 +13,11 @@ pub struct MaintainerList {
 
 #[derive(Debug, PartialEq, Eq, Hash, Deserialize)]
 pub struct Handle(String);
+impl std::fmt::Display for Handle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
 pub struct GithubName(String);
