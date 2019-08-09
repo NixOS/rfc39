@@ -5,7 +5,7 @@ use sloggers::Build;
 
 pub fn default_logger() -> slog::Logger {
     let mut builder = TerminalLoggerBuilder::new();
-    builder.level(Severity::Debug);
+    builder.level(Severity::Info);
     builder.destination(Destination::Stderr);
     builder.build().unwrap()
 }
