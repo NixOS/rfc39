@@ -8,7 +8,7 @@
 # Modified:
 #  * deleted all but the first few, deleted the `github` handle from
 #    the last entry.
-#  * added the proposed github_id field
+#  * added the proposed githubId field
 
 /* List of NixOS maintainers.
 
@@ -31,7 +31,7 @@
   - `name` is your, preferably real, name,
   - `email` is your maintainer email address, and
   - `github` is your GitHub handle (as it appears in the URL of your profile page, `https://github.com/<userhandle>`),
-  - `github_id` is your GitHub user ID, which can be found at `https://api.github.com/users/<userhandle>`,
+  - `githubId` is your GitHub user ID, which can be found at `https://api.github.com/users/<userhandle>`,
   - `keys` is a list of your PGP/GPG key IDs and fingerprints.
 
   `handle == github` is strongly preferred whenever `github` is an acceptable attribute name and is short and convenient.
@@ -63,12 +63,12 @@
   "1000101" = {
     email = "jan.hrnko@satoshilabs.com";
     github = "1000101";
-    github_id = 791309;
+    githubId = 791309;
     name = "Jan Hrnko";
   };
   a1russell = {
     email = "adamlr6+pub@gmail.com";
     name = "Adam Russell";
-    github_id = 241628;
+    githubId = 241628;
   };
 }

@@ -54,7 +54,7 @@
     email = "0x4A6F@shackspace.de";
     name = "Joachim Ernst";
     github = "0x4A6F";
-    github_id = 9675338;
+    githubId = 9675338;
     keys = [{
       longkeyid = "rsa8192/0x87027528B006D66D";
       fingerprint = "F466 A548 AD3F C1F1 8C88  4576 8702 7528 B006 D66D";
@@ -63,7 +63,7 @@
   "1000101" = {
     email = "jan.hrnko@satoshilabs.com";
     github = "1000101";
-    github_id = 791309;
+    githubId = 791309;
     name = "Jan Hrnko";
   };
   a1russell = {

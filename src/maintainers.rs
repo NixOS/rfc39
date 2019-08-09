@@ -50,6 +50,7 @@ pub struct Information {
     email: String,
     name: Option<String>,
     pub github: Option<GitHubName>,
+    #[serde(rename = "githubId")]
     pub github_id: Option<GitHubID>,
 }
 

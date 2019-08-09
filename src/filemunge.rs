@@ -3,10 +3,10 @@
 //!     github = "1000101";
 //!
 //! and see if 1000101 is in the list of IDs we have, and if so, there is
-//! no github_id for that record... so,
+//! no githubId for that record... so,
 //! inject in to the file:
 //!
-//!     github_id = THE_ID;
+//!     githubId = THE_ID;
 //!
 //! Note, regex capture the leading whitespace from the `github =` line
 //! to match indentation, no matter how janky it is.
@@ -42,7 +42,7 @@ pub fn backfill_file(mut ids: HashMap<GitHubName, GitHubID>, file: String) -> St
                         .expect("leading_space should be in regex")
                         .as_str();
 
-                    return format!("{}\n{}github_id = {};\n", line, leading_space, id);
+                    return format!("{}\n{}githubId = {};\n", line, leading_space, id);
                 }
             }
 
