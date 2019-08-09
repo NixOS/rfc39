@@ -20,16 +20,16 @@ impl std::fmt::Display for Handle {
 }
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
-pub struct GithubName(String);
-impl std::fmt::Display for GithubName {
+pub struct GitHubName(String);
+impl std::fmt::Display for GitHubName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
-pub struct GithubId(u128);
-impl std::fmt::Display for GithubId {
+pub struct GitHubId(u128);
+impl std::fmt::Display for GitHubId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
     }
@@ -39,8 +39,8 @@ impl std::fmt::Display for GithubId {
 pub struct Information {
     email: String,
     name: Option<String>,
-    pub github: Option<GithubName>,
-    pub github_id: Option<GithubId>,
+    pub github: Option<GitHubName>,
+    pub github_id: Option<GitHubId>,
 }
 
 impl MaintainerList {
@@ -88,7 +88,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{GithubId, GithubName, Handle, Information, MaintainerList};
+    use super::{GitHubId, GitHubName, Handle, Information, MaintainerList};
     use std::path::Path;
 
     #[test]
@@ -103,7 +103,7 @@ mod tests {
                     Information {
                         email: "0x4A6F@shackspace.de".into(),
                         name: Some("Joachim Ernst".into()),
-                        github: Some(GithubName("0x4A6F".into())),
+                        github: Some(GitHubName("0x4A6F".into())),
                         github_id: None,
                     },
                 ),
@@ -112,7 +112,7 @@ mod tests {
                     Information {
                         email: "jan.hrnko@satoshilabs.com".into(),
                         name: Some("Jan Hrnko".into()),
-                        github: Some(GithubName("1000101".into())),
+                        github: Some(GitHubName("1000101".into())),
                         github_id: None,
                     },
                 ),
@@ -144,7 +144,7 @@ mod tests {
                     Information {
                         email: "0x4A6F@shackspace.de".into(),
                         name: Some("Joachim Ernst".into()),
-                        github: Some(GithubName("0x4A6F".into())),
+                        github: Some(GitHubName("0x4A6F".into())),
                         github_id: None,
                     },
                 ),
@@ -153,8 +153,8 @@ mod tests {
                     Information {
                         email: "jan.hrnko@satoshilabs.com".into(),
                         name: Some("Jan Hrnko".into()),
-                        github: Some(GithubName("1000101".into())),
-                        github_id: Some(GithubId(791309)),
+                        github: Some(GitHubName("1000101".into())),
+                        github_id: Some(GitHubId(791309)),
                     },
                 ),
                 (
@@ -163,7 +163,7 @@ mod tests {
                         email: "adamlr6+pub@gmail.com".into(),
                         name: Some("Adam Russell".into()),
                         github: None,
-                        github_id: Some(GithubId(241628)),
+                        github_id: Some(GitHubId(241628)),
                     },
                 ),
             ]
