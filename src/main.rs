@@ -17,7 +17,6 @@ mod maintainers;
 use maintainers::{GitHubID, GitHubName, MaintainerList};
 mod filemunge;
 use hubcaps::{Credentials, Github};
-use hyper::client::connect::Connect;
 use std::env;
 use std::fs::read_to_string;
 use std::path::Path;
@@ -61,7 +60,8 @@ fn main() {
     let github = Github::new(
         String::from("NixOS/rfcs#39 (hubcaps)"),
         env::var("GITHUB_TOKEN").ok().map(Credentials::Token),
-    );
+    )
+    .unwrap();
 
     match inputs.mode {
         ExecMode::CheckHandles => {
@@ -76,14 +76,12 @@ fn main() {
     }
 }
 
-fn backfill_ids<T>(
+fn backfill_ids(
     logger: slog::Logger,
-    users: hubcaps::users::Users<T>,
+    users: hubcaps::users::Users,
     file: &Path,
     maintainers: MaintainerList,
-) where
-    T: Clone + Connect + 'static,
-{
+) {
     let mut rt = Runtime::new().unwrap();
 
     let missing_ids = maintainers

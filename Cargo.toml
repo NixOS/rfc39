@@ -21,3 +21,6 @@ slog = "2.5"
 sloggers = "0.3.2"
 structopt = "0.2.18"
 tokio = "0.1.22"
+
+[patch.crates-io]
+hubcaps = { git = "https://github.com/grahamc/hubcaps.git", branch = "git-commits" }
