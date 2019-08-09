@@ -21,12 +21,26 @@ impl std::fmt::Display for Handle {
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
 pub struct GithubName(String);
+impl std::fmt::Display for GithubName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Deserialize)]
+pub struct GithubId(u128);
+impl std::fmt::Display for GithubId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
 pub struct Information {
     email: String,
     name: Option<String>,
-    github: Option<GithubName>,
+    pub github: Option<GithubName>,
+    pub github_id: Option<GithubId>,
 }
 
 impl MaintainerList {
@@ -74,7 +88,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{GithubName, Handle, Information, MaintainerList};
+    use super::{GithubId, GithubName, Handle, Information, MaintainerList};
     use std::path::Path;
 
     #[test]
@@ -90,6 +104,7 @@ mod tests {
                         email: "0x4A6F@shackspace.de".into(),
                         name: Some("Joachim Ernst".into()),
                         github: Some(GithubName("0x4A6F".into())),
+                        github_id: None,
                     },
                 ),
                 (
@@ -98,6 +113,7 @@ mod tests {
                         email: "jan.hrnko@satoshilabs.com".into(),
                         name: Some("Jan Hrnko".into()),
                         github: Some(GithubName("1000101".into())),
+                        github_id: None,
                     },
                 ),
                 (
@@ -106,6 +122,48 @@ mod tests {
                         email: "adamlr6+pub@gmail.com".into(),
                         name: Some("Adam Russell".into()),
                         github: None,
+                        github_id: None,
+                    },
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        };
+        assert_eq!(expect, MaintainerList::load(logger, &sample).unwrap(),);
+    }
+
+    #[test]
+    pub fn test_load_9175a201bbb28e679d72e9f7d28c84ab7d1f742_proposed() {
+        let logger = rfc39::default_logger();
+
+        let sample = Path::new("./samples/9175a201bbb28e679d72e9f7d28c84ab7d1f742b.proposed.nix");
+        let expect = MaintainerList {
+            maintainers: vec![
+                (
+                    Handle("0x4A6F".into()),
+                    Information {
+                        email: "0x4A6F@shackspace.de".into(),
+                        name: Some("Joachim Ernst".into()),
+                        github: Some(GithubName("0x4A6F".into())),
+                        github_id: None,
+                    },
+                ),
+                (
+                    Handle("1000101".into()),
+                    Information {
+                        email: "jan.hrnko@satoshilabs.com".into(),
+                        name: Some("Jan Hrnko".into()),
+                        github: Some(GithubName("1000101".into())),
+                        github_id: Some(GithubId(791309)),
+                    },
+                ),
+                (
+                    Handle("a1russell".into()),
+                    Information {
+                        email: "adamlr6+pub@gmail.com".into(),
+                        name: Some("Adam Russell".into()),
+                        github: None,
+                        github_id: Some(GithubId(241628)),
                     },
                 ),
             ]
