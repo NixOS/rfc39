@@ -19,19 +19,29 @@ impl std::fmt::Display for Handle {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Hash, Deserialize)]
 pub struct GitHubName(String);
 impl std::fmt::Display for GitHubName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
     }
 }
+impl GitHubName {
+    pub fn new(name: String) -> GitHubName {
+        GitHubName(name)
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
-pub struct GitHubId(u128);
-impl std::fmt::Display for GitHubId {
+pub struct GitHubID(u64);
+impl std::fmt::Display for GitHubID {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+impl GitHubID {
+    pub fn new(id: u64) -> GitHubID {
+        GitHubID(id)
     }
 }
 
@@ -40,7 +50,7 @@ pub struct Information {
     email: String,
     name: Option<String>,
     pub github: Option<GitHubName>,
-    pub github_id: Option<GitHubId>,
+    pub github_id: Option<GitHubID>,
 }
 
 impl MaintainerList {
@@ -88,7 +98,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{GitHubId, GitHubName, Handle, Information, MaintainerList};
+    use super::{GitHubID, GitHubName, Handle, Information, MaintainerList};
     use std::path::Path;
 
     #[test]
@@ -154,7 +164,7 @@ mod tests {
                         email: "jan.hrnko@satoshilabs.com".into(),
                         name: Some("Jan Hrnko".into()),
                         github: Some(GitHubName("1000101".into())),
-                        github_id: Some(GitHubId(791309)),
+                        github_id: Some(GitHubID(791309)),
                     },
                 ),
                 (
@@ -163,7 +173,7 @@ mod tests {
                         email: "adamlr6+pub@gmail.com".into(),
                         name: Some("Adam Russell".into()),
                         github: None,
-                        github_id: Some(GitHubId(241628)),
+                        github_id: Some(GitHubID(241628)),
                     },
                 ),
             ]
