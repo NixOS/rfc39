@@ -1,10 +1,10 @@
 //! Given a checkout of nixpkgs, extract a dataset of GitHub account
 //! information from the maintainer list.
 
+use crate::nix;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
-use std::process::Command;
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
 pub struct MaintainerList {
@@ -18,12 +18,22 @@ impl std::fmt::Display for Handle {
         write!(f, "{}", self.0)
     }
 }
+impl Handle {
+    pub fn new(name: String) -> Handle {
+        Handle(name)
+    }
+}
 
-#[derive(Debug, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Debug, Eq, Hash, Clone, Deserialize)]
 pub struct GitHubName(String);
 impl std::fmt::Display for GitHubName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+impl PartialEq for GitHubName {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.to_lowercase() == other.0.to_lowercase()
     }
 }
 impl GitHubName {
@@ -32,7 +42,7 @@ impl GitHubName {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize)]
 pub struct GitHubID(u64);
 impl std::fmt::Display for GitHubID {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -60,8 +70,12 @@ impl MaintainerList {
         path: &Path,
     ) -> Result<MaintainerList, serde_json::error::Error> {
         Ok(MaintainerList {
-            maintainers: nix_instantiate_to_struct(logger, path)?,
+            maintainers: nix::nix_instantiate_file_to_struct(logger, path)?,
         })
+    }
+
+    pub fn get<'a, 'b>(&'a self, handle: &'b Handle) -> Option<&'a Information> {
+        self.maintainers.get(handle)
     }
 }
 
@@ -72,29 +86,6 @@ impl IntoIterator for MaintainerList {
     fn into_iter(self) -> Self::IntoIter {
         self.maintainers.into_iter()
     }
-}
-
-fn nix_instantiate_to_struct<T>(
-    logger: slog::Logger,
-    file: &Path,
-) -> Result<T, serde_json::error::Error>
-where
-    T: serde::de::DeserializeOwned,
-{
-    let output = Command::new("nix-instantiate")
-        .args(&["--eval", "--strict", "--json"])
-        .arg(file)
-        .output()
-        .expect("Failed to start nix-instantiate!");
-
-    if !output.stderr.is_empty() {
-        warn!(logger, "Stderr from nix-instantiate";
-              "stderr" => String::from_utf8_lossy(&output.stderr).to_string()
-        );
-        // "stderr" => stderr);
-    }
-
-    serde_json::from_slice(&output.stdout)
 }
 
 #[cfg(test)]

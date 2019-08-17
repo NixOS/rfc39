@@ -15,7 +15,10 @@ use structopt::StructOpt;
 mod maintainers;
 use maintainers::MaintainerList;
 mod filemunge;
+mod maintainerhistory;
+mod nix;
 mod op_backfill;
+mod op_blame_author;
 mod op_check_handles;
 use hubcaps::{Credentials, Github};
 use std::env;
@@ -40,6 +43,12 @@ enum ExecMode {
     /// Poorly edit the maintainers.nix file to add missing GitHub IDs
     #[structopt(name = "backfill-ids")]
     BackfillIDs,
+
+    /// Look to see if any of the GitHub handles have probably changed
+    /// by examining who authored the commit adding the maintainer
+    /// to the .nix file.
+    #[structopt(name = "blame-author")]
+    BlameAuthor,
 }
 
 fn main() {
@@ -62,12 +71,19 @@ fn main() {
     .unwrap();
 
     match inputs.mode {
-        ExecMode::CheckHandles => {
-            op_check_handles::check_handles(logger.new(o!("exec-mode" => "CheckHandles")), maintainers)
-        }
+        ExecMode::CheckHandles => op_check_handles::check_handles(
+            logger.new(o!("exec-mode" => "CheckHandles")),
+            maintainers,
+        ),
         ExecMode::BackfillIDs => op_backfill::backfill_ids(
             logger.new(o!("exec-mode" => "BackfillIDs")),
-            github.users(),
+            github,
+            &maintainers_file,
+            maintainers,
+        ),
+        ExecMode::BlameAuthor => op_blame_author::report(
+            logger.new(o!("exec-mode" => "BlameAuthor")),
+            github,
             &maintainers_file,
             maintainers,
         ),

@@ -1,10 +1,12 @@
-//! Print to stdout a new maintainer list Nix file, with as many IDs
+//! bPrint to stdout a new maintainer list Nix file, with as many IDs
 //! filled in as possible.
 
 #![warn(missing_docs)]
 
 use crate::filemunge;
+use crate::maintainerhistory::{Confidence, MaintainerHistory};
 use crate::maintainers::{GitHubID, GitHubName, MaintainerList};
+use hubcaps::Github;
 use std::collections::HashMap;
 use std::fs::read_to_string;
 use std::path::Path;
@@ -12,7 +14,7 @@ use tokio::runtime::Runtime;
 
 pub fn backfill_ids(
     logger: slog::Logger,
-    users: hubcaps::users::Users,
+    github: Github,
     file: &Path,
     maintainers: MaintainerList,
 ) {
@@ -20,25 +22,40 @@ pub fn backfill_ids(
 
     let missing_ids = maintainers
         .into_iter()
-        .filter(|(_, maintainer)| maintainer.github.is_some() && maintainer.github_id.is_none())
-        .map(|(_, maintainer)| {
-            maintainer
-                .github
-                .expect("should be safe because of prior filter")
+        .filter(|(handle, maintainer)| {
+            maintainer.github.is_some() && maintainer.github_id.is_none()
+        })
+        .map(|(handle, maintainer)| {
+            (
+                maintainer
+                    .github
+                    .clone()
+                    .expect("should be safe because of prior filter"),
+                maintainer,
+                handle,
+            )
         });
 
+    info!(logger, "Loading the maintainer list's GitHub accounts and blame history";
+          "commit" => "");
+
+    let history = MaintainerHistory::load(logger.clone(), file);
+
+    info!(logger, "Loaded the maintainer list's GitHub accounts and blame history";
+          "commit" => "");
+
     let found_ids: HashMap<GitHubName, GitHubID> = missing_ids
-        .filter_map(|github_name| {
-            info!(logger, "Getting ID for user";
+        .filter_map(|(github_name, maintainer, handle)| {
+            debug!(logger, "Getting ID for user";
                   "github_account" => %github_name,
             );
 
-            match rt.block_on(users.get(github_name.to_string())) {
+            match rt.block_on(github.users().get(github_name.to_string())) {
                 Ok(user) => {
-                    info!(logger, "Found ID for user";
+                    debug!(logger, "Found ID for user";
                           "github_account" => %github_name,
                           "id" => %user.id);
-                    Some((github_name, GitHubID::new(user.id)))
+                    Some((github_name, maintainer, GitHubID::new(user.id), handle))
                 }
                 Err(e) => {
                     warn!(logger, "Error fetching ID for user";
@@ -46,6 +63,21 @@ pub fn backfill_ids(
                           "e" => %e);
                     None
                 }
+            }
+        })
+        .filter_map(|(github_name, maintainer, github_id, handle)| {
+            let confidence =
+                history.confidence_for_user(&github, &handle, &github_name, &github_id)?;
+
+            if confidence == Confidence::Total {
+                Some((github_name, github_id))
+            } else {
+                info!(logger,
+                      "Non-total confidence for user";
+                      "confidence" => %format!("{:#?}", confidence),
+                      "user" => %handle,
+                );
+                None
             }
         })
         .collect();
