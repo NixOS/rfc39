@@ -20,6 +20,7 @@ mod nix;
 mod op_backfill;
 mod op_blame_author;
 mod op_check_handles;
+mod op_sync_team;
 use hubcaps::{Credentials, Github};
 use std::env;
 
@@ -49,7 +50,31 @@ enum ExecMode {
     /// to the .nix file.
     #[structopt(name = "blame-author")]
     BlameAuthor,
+
+    /// Add and remove team members from a GitHub team based on
+    /// maintainership information. Use list-teams to find a team's
+    /// ID
+    #[structopt(name = "sync-team")]
+    SyncTeam(SyncTeamParams),
+
+    /// List an org's teams, to get the ID for sync-team
+    #[structopt(name = "list-teams")]
+    ListTeams(ListTeamParams)
 }
+
+#[derive(Debug, StructOpt)]
+struct SyncTeamParams {
+    pub organization: String,
+
+    /// Find the team ID by going to
+    pub team_id: u64,
+}
+
+#[derive(Debug, StructOpt)]
+struct ListTeamParams {
+    pub organization: String,
+}
+
 
 fn main() {
     let logger = rfc39::default_logger();
@@ -86,6 +111,17 @@ fn main() {
             github,
             &maintainers_file,
             maintainers,
+        ),
+        ExecMode::SyncTeam(team_info) => op_sync_team::sync_team(
+            logger.new(o!("exec-mode" => "SyncTeam")),
+            github,
+            maintainers,
+            &team_info.organization,
+            team_info.team_id,
+        ),
+        ExecMode::ListTeams(team_info) => op_sync_team::list_teams(
+            github,
+            &team_info.organization,
         ),
     }
 }

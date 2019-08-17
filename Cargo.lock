@@ -486,7 +486,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "hubcaps"
 version = "0.5.0"
-source = "git+https://github.com/grahamc/hubcaps.git?branch=git-commits#8dd274e1d12677e4c69cbc10fa4b915299f504f2"
+source = "git+https://github.com/softprops/hubcaps.git#dfd133955db5a3d9dafc181e44f557179ff91bf6"
 dependencies = [
  "base64 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "error-chain 0.12.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1173,7 +1173,7 @@ name = "rfc39"
 version = "0.1.0"
 dependencies = [
  "futures 0.1.28 (registry+https://github.com/rust-lang/crates.io-index)",
- "hubcaps 0.5.0 (git+https://github.com/grahamc/hubcaps.git?branch=git-commits)",
+ "hubcaps 0.5.0 (git+https://github.com/softprops/hubcaps.git)",
  "hyper 0.12.33 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1927,7 +1927,7 @@ dependencies = [
 "checksum http 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)" = "372bcb56f939e449117fb0869c2e8fd8753a8223d92a172c6e808cf123a5b6e4"
 "checksum http-body 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "6741c859c1b2463a423a1dbce98d418e6c3c3fc720fb0d45528657320920292d"
 "checksum httparse 1.3.4 (registry+https://github.com/rust-lang/crates.io-index)" = "cd179ae861f0c2e53da70d892f5f3029f9594be0c41dc5269cd371691b1dc2f9"
-"checksum hubcaps 0.5.0 (git+https://github.com/grahamc/hubcaps.git?branch=git-commits)" = "<none>"
+"checksum hubcaps 0.5.0 (git+https://github.com/softprops/hubcaps.git)" = "<none>"
 "checksum hyper 0.12.33 (registry+https://github.com/rust-lang/crates.io-index)" = "7cb44cbce9d8ee4fb36e4c0ad7b794ac44ebaad924b9c8291a63215bb44c2c8f"
 "checksum hyper-tls 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "3a800d6aa50af4b5850b2b0f659625ce9504df908e9733b635720483be26174f"
 "checksum hyperx 0.13.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e4a94cbc2c6f63028e5736ca4e811ae36d3990059c384cbe68298c66728a9776"
