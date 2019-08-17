@@ -69,8 +69,8 @@ mod tests {
 
         let output = backfill_file(
             vec![
-                (GitHubName::new("1000101".into()), GitHubID::new(791309)),
-                (GitHubName::new("0x4A6F".into()), GitHubID::new(9675338)),
+                (GitHubName::new("1000101"), GitHubID::new(791309)),
+                (GitHubName::new("0x4A6F"), GitHubID::new(9675338)),
             ]
             .into_iter()
             .collect(),

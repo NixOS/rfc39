@@ -37,8 +37,9 @@ impl PartialEq for GitHubName {
     }
 }
 impl GitHubName {
-    pub fn new(name: String) -> GitHubName {
-        GitHubName(name)
+    pub fn new<T>(name: T) -> GitHubName
+    where T: Into<String>{
+        GitHubName(name.into())
     }
 }
 
