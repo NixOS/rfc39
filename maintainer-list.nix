@@ -199,6 +199,64 @@
     github = "apeyroux";
     githubId = 1078530;
     name = "Alexandre Peyroux";
+  suhr = {
+    email = "suhr@i2pmail.org";
+    github = "suhr";
+    githubId = 65870;
+    name = "Сухарик";
+  };
+  jonafato = {
+    email = "jon@jonafato.com";
+    github = "jonafato";
+    githubId = 392720;
+    name = "Jon Banafato";
+  };
+  ralith = {
+    email = "ben.e.saunders@gmail.com";
+    github = "ralith";
+    githubId = 104558;
+    name = "Benjamin Saunders";
+  };
+  nyanloutre = {
+    email = "paul@nyanlout.re";
+    github = "nyanloutre";
+    githubId = 7677321;
+    name = "Paul Trehiou";
+  };
+  johnazoidberg = {
+    email = "git@danielschaefer.me";
+    github = "johnazoidberg";
+    githubId = 5307138;
+    name = "Daniel Schäfer";
+  };
+  chiiruno = {
+    email = "okinan@protonmail.com";
+    github = "chiiruno";
+    githubId = 30435868;
+    name = "Okina Matara";
+  };
+  tadfisher = {
+    email = "tadfisher@gmail.com";
+    github = "tadfisher";
+    githubId = 129148;
+    name = "Tad Fisher";
+  };
+  rvolosatovs = {
+    email = "rvolosatovs@riseup.net";
+    github = "rvolosatovs";
+    name = "Roman Volosatovs";
+  };
+  catern = {
+    email = "sbaugh@catern.com";
+    github = "catern";
+    githubId = 5394722;
+    name = "Spencer Baugh";
+  };
+  vdemeester = {
+    email = "vincent@sbr.pm";
+    github = "vdemeester";
+    githubId = 6508;
+    name = "Vincent Demeester";
   };
   carlosdagos = {
     email = "m@cdagostino.io";
@@ -1224,12 +1282,6 @@
     githubId = 1945;
     name = "Casey Rodarmor";
   };
-  catern = {
-    email = "sbaugh@catern.com";
-    github = "catern";
-    githubId = 5394722;
-    name = "Spencer Baugh";
-  };
   caugner = {
     email = "nixos@caugner.de";
     github = "caugner";
@@ -1303,12 +1355,6 @@
     github = "chessai";
     githubId = 18648043;
     name = "Daniel Cartwright";
-  };
-  chiiruno = {
-    email = "okinan@protonmail.com";
-    github = "chiiruno";
-    githubId = 30435868;
-    name = "Okina Matara";
   };
   choochootrain = {
     email = "hurshal@imap.cc";
@@ -3089,12 +3135,6 @@
     githubId = 117805;
     name = "Johannes Bornhold";
   };
-  johnazoidberg = {
-    email = "git@danielschaefer.me";
-    github = "johnazoidberg";
-    githubId = 5307138;
-    name = "Daniel Schäfer";
-  };
   johnchildren = {
     email = "john.a.children@gmail.com";
     github = "johnchildren";
@@ -3123,12 +3163,6 @@
       fingerprint = "B154 A8F9 0610 DB45 0CA8  CF39 85EA E7D9 DF56 C5CA";
     }];
     name = "Ioannis Koutras";
-  };
-  jonafato = {
-    email = "jon@jonafato.com";
-    github = "jonafato";
-    githubId = 392720;
-    name = "Jon Banafato";
   };
   jonathanreeve = {
     email = "jon.reeve@gmail.com";
@@ -4607,12 +4641,6 @@
     githubId = 369111;
     name = "Morgan Jones";
   };
-  nyanloutre = {
-    email = "paul@nyanlout.re";
-    github = "nyanloutre";
-    githubId = 7677321;
-    name = "Paul Trehiou";
-  };
   nyarly = {
     email = "nyarly@gmail.com";
     github = "nyarly";
@@ -5151,12 +5179,6 @@
     githubId = 882;
     name = "Ragnar Dahlen";
   };
-  ralith = {
-    email = "ben.e.saunders@gmail.com";
-    github = "ralith";
-    githubId = 104558;
-    name = "Benjamin Saunders";
-  };
   ramkromberg = {
     email = "ramkromberg@mail.com";
     github = "ramkromberg";
@@ -5463,11 +5485,6 @@
     github = "rvlander";
     githubId = 5236428;
     name = "Gaëtan André";
-  };
-  rvolosatovs = {
-    email = "rvolosatovs@riseup.net";
-    github = "rvolosatovs";
-    name = "Roman Volosatovs";
   };
   ryanartecona = {
     email = "ryanartecona@gmail.com";
@@ -6023,12 +6040,6 @@
     githubId = 638763;
     name = "Stuart Moss";
   };
-  suhr = {
-    email = "suhr@i2pmail.org";
-    github = "suhr";
-    githubId = 65870;
-    name = "Сухарик";
-  };
   SuprDewd = {
     email = "suprdewd@gmail.com";
     github = "SuprDewd";
@@ -6100,12 +6111,6 @@
     github = "t184256";
     githubId = 5991987;
     name = "Alexander Sosedkin";
-  };
-  tadfisher = {
-    email = "tadfisher@gmail.com";
-    github = "tadfisher";
-    githubId = 129148;
-    name = "Tad Fisher";
   };
   taeer = {
     email = "taeer@necsi.edu";
@@ -6567,12 +6572,6 @@
       longkeyid = "rsa4096/0xE747DF1F9575A3AA";
       fingerprint = "B600 6460 B60A 80E7 8206  2449 E747 DF1F 9575 A3AA";
     }];
-  };
-  vdemeester = {
-    email = "vincent@sbr.pm";
-    github = "vdemeester";
-    githubId = 6508;
-    name = "Vincent Demeester";
   };
   velovix = {
     email = "xaviosx@gmail.com";
