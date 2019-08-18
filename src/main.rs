@@ -59,7 +59,7 @@ enum ExecMode {
 
     /// List an org's teams, to get the ID for sync-team
     #[structopt(name = "list-teams")]
-    ListTeams(ListTeamParams)
+    ListTeams(ListTeamParams),
 }
 
 #[derive(Debug, StructOpt)]
@@ -68,13 +68,15 @@ struct SyncTeamParams {
 
     /// Find the team ID by going to
     pub team_id: u64,
+
+    #[structopt(long = "dry-run")]
+    pub dry_run: bool,
 }
 
 #[derive(Debug, StructOpt)]
 struct ListTeamParams {
     pub organization: String,
 }
-
 
 fn main() {
     let logger = rfc39::default_logger();
@@ -118,10 +120,8 @@ fn main() {
             maintainers,
             &team_info.organization,
             team_info.team_id,
+            team_info.dry_run,
         ),
-        ExecMode::ListTeams(team_info) => op_sync_team::list_teams(
-            github,
-            &team_info.organization,
-        ),
+        ExecMode::ListTeams(team_info) => op_sync_team::list_teams(github, &team_info.organization),
     }
 }

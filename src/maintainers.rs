@@ -19,8 +19,11 @@ impl std::fmt::Display for Handle {
     }
 }
 impl Handle {
-    pub fn new(name: String) -> Handle {
-        Handle(name)
+    pub fn new<T>(name: T) -> Handle
+    where
+        T: Into<String>,
+    {
+        Handle(name.into())
     }
 }
 
@@ -38,12 +41,14 @@ impl PartialEq for GitHubName {
 }
 impl GitHubName {
     pub fn new<T>(name: T) -> GitHubName
-    where T: Into<String>{
+    where
+        T: Into<String>,
+    {
         GitHubName(name.into())
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone, Deserialize)]
 pub struct GitHubID(u64);
 impl std::fmt::Display for GitHubID {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -58,14 +63,18 @@ impl GitHubID {
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
 pub struct Information {
-    email: String,
-    name: Option<String>,
+    pub email: String,
+    pub name: Option<String>,
     pub github: Option<GitHubName>,
     #[serde(rename = "githubId")]
     pub github_id: Option<GitHubID>,
 }
 
 impl MaintainerList {
+    pub fn new(maintainers: HashMap<Handle, Information>) -> MaintainerList {
+        MaintainerList { maintainers }
+    }
+
     pub fn load(
         logger: slog::Logger,
         path: &Path,
@@ -77,6 +86,10 @@ impl MaintainerList {
 
     pub fn get<'a, 'b>(&'a self, handle: &'b Handle) -> Option<&'a Information> {
         self.maintainers.get(handle)
+    }
+
+    pub fn iter<'a>(&'a self) -> std::collections::hash_map::Iter<'a, Handle, Information> {
+        self.maintainers.iter()
     }
 }
 
