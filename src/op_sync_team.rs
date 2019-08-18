@@ -99,6 +99,7 @@ pub fn sync_team(
                     let user = rt
                         .block_on(github.users().get(&format!("{}", github_name)))
                         .unwrap();
+
                     if GitHubID::new(user.id) == github_id {
                         rt.block_on(team_actions.add_user(
                             &format!("{}", github_name),

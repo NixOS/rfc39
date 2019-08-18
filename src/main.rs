@@ -8,8 +8,13 @@
 extern crate slog;
 
 #[macro_use]
+extern crate serde;
+
+#[macro_use]
 extern crate lazy_static;
 
+use std::fs::File;
+use std::io::Read;
 use std::path::PathBuf;
 use structopt::StructOpt;
 mod maintainers;
@@ -21,14 +26,28 @@ mod op_backfill;
 mod op_blame_author;
 mod op_check_handles;
 mod op_sync_team;
-use hubcaps::{Credentials, Github};
+use hubcaps::{InstallationTokenGenerator, JWTCredentials, Credentials, Github};
 use std::env;
+
+// NOTE: DO NOT MAKE "Debug"! This will leak secrets
+#[derive(Deserialize)]
+pub struct GitHubAuth {
+    pub app_id: u64,
+    pub client_id: String,
+    pub client_secret: String,
+    pub private_key_file: PathBuf,
+    pub installation_id: u64,
+}
 
 #[derive(Debug, StructOpt)]
 struct Options {
     /// Maintainer list
     #[structopt(short = "m", long = "maintainers", parse(from_os_str))]
     maintainers: PathBuf,
+
+    /// GitHub Credential File
+    #[structopt(short = "c", long = "credentials", parse(from_os_str))]
+    credential_file: PathBuf,
 
     /// Execution Mode
     #[structopt(subcommand)]
@@ -94,11 +113,30 @@ fn main() {
 
     let maintainers = MaintainerList::load(logger.clone(), &maintainers_file).unwrap();
 
+    let github_auth = nix::nix_instantiate_file_to_struct::<GitHubAuth>(
+        logger.new(o!()),
+        &inputs.credential_file
+    ).expect("Failed to parse the credential file");
+
+    let mut private_key = Vec::new();
+    File::open(&github_auth.private_key_file)
+        .expect("Opening the private key file")
+        .read_to_end(&mut private_key)
+        .expect("Reading the private key");
+
     let github = Github::new(
         String::from("NixOS/rfcs#39 (hubcaps)"),
-        env::var("GITHUB_TOKEN").ok().map(Credentials::Token),
-    )
-    .unwrap();
+        Credentials::InstallationToken(
+            InstallationTokenGenerator::new(
+                github_auth.installation_id,
+                JWTCredentials::new(
+                    github_auth.app_id,
+                    private_key,
+                ).unwrap()
+            )
+        )
+    ).unwrap();
+
 
     match inputs.mode {
         ExecMode::CheckHandles => op_check_handles::check_handles(
