@@ -20,7 +20,9 @@ impl std::fmt::Display for Handle {
 }
 impl Handle {
     pub fn new<T>(name: T) -> Handle
-    where T: Into<String> {
+    where
+        T: Into<String>,
+    {
         Handle(name.into())
     }
 }
@@ -39,7 +41,9 @@ impl PartialEq for GitHubName {
 }
 impl GitHubName {
     pub fn new<T>(name: T) -> GitHubName
-    where T: Into<String>{
+    where
+        T: Into<String>,
+    {
         GitHubName(name.into())
     }
 }
@@ -68,9 +72,7 @@ pub struct Information {
 
 impl MaintainerList {
     pub fn new(maintainers: HashMap<Handle, Information>) -> MaintainerList {
-        MaintainerList {
-            maintainers
-        }
+        MaintainerList { maintainers }
     }
 
     pub fn load(

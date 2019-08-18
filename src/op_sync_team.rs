@@ -1,31 +1,35 @@
-use std::collections::HashMap;
+use crate::maintainers::{GitHubID, GitHubName, Handle, MaintainerList};
 use futures::stream::Stream;
-use tokio::runtime::Runtime;
-use hubcaps::Github;
-use hubcaps::teams::Team;
+use hubcaps::teams::{Team, TeamMemberOptions, TeamMemberRole};
 use hubcaps::users::User;
-use crate::maintainers::{MaintainerList, Handle, GitHubID, GitHubName};
+use hubcaps::Github;
+use std::collections::HashMap;
+use tokio::runtime::Runtime;
 
-pub fn list_teams(github: Github, org: &str, ) {
+pub fn list_teams(github: Github, org: &str) {
     let mut rt = Runtime::new().unwrap();
 
-    rt.block_on(
-        github
-            .org(org)
-            .teams()
-            .iter()
-            .for_each(|team| {
-                println!("{:10} {}", team.id, team.name);
-                Ok(())
-            })
-    ).expect("Failed to list teams");
+    rt.block_on(github.org(org).teams().iter().for_each(|team| {
+        println!("{:10} {}", team.id, team.name);
+        Ok(())
+    }))
+    .expect("Failed to list teams");
 }
 
-pub fn sync_team(logger: slog::Logger, github: Github, maintainers: MaintainerList, org: &str, team_id: u64, dry_run: bool) {
+pub fn sync_team(
+    logger: slog::Logger,
+    github: Github,
+    maintainers: MaintainerList,
+    org: &str,
+    team_id: u64,
+    dry_run: bool,
+) {
     let mut rt = Runtime::new().unwrap();
 
     let team_actions = github.org(org).teams().get(team_id);
-    let team = rt.block_on(team_actions.get()).expect("Failed to fetch team");
+    let team = rt
+        .block_on(team_actions.get())
+        .expect("Failed to fetch team");
     info!(logger, "Syncing team";
           "team_name" => %team.name,
           "team_id" => %team.id,
@@ -36,31 +40,52 @@ pub fn sync_team(logger: slog::Logger, github: Github, maintainers: MaintainerLi
           "team_id" => %team.id,
     );
 
-    let current_members: HashMap<GitHubID, GitHubName> = rt.block_on(
-        team_actions
-            .iter_members()
-            .map(|user| {
-                (GitHubID::new(user.id), GitHubName::new(user.login))
-            })
-            .collect()
-    ).expect("Failed to fetch team members")
+    let current_members: HashMap<GitHubID, GitHubName> = rt
+        .block_on(
+            team_actions
+                .iter_members()
+                .map(|user| (GitHubID::new(user.id), GitHubName::new(user.login)))
+                .collect(),
+        )
+        .expect("Failed to fetch team members")
         .into_iter()
         .collect();
 
     let diff = maintainer_team_diff(maintainers, &current_members);
     for (github_id, action) in diff {
         match action {
-            TeamAction::Add(handle) => {
+            TeamAction::Add(github_name, handle) => {
                 if dry_run {
                     info!(logger, "Would add user to the team";
                           "nixpkgs-handle" => %handle,
+                          "github-name" => %github_name,
                           "github-id" => %github_id,
                     );
                 } else {
                     info!(logger, "Adding user to the team";
                           "nixpkgs-handle" => %handle,
+                          "github-name" => %github_name,
                           "github-id" => %github_id,
                     );
+
+                    // verify the ID and name still match
+                    let user = rt
+                        .block_on(github.users().get(&format!("{}", github_name)))
+                        .unwrap();
+                    if GitHubID::new(user.id) == github_id {
+                        rt.block_on(team_actions.add_user(
+                            &format!("{}", github_name),
+                            TeamMemberOptions {
+                                role: TeamMemberRole::Member,
+                            },
+                        ))
+                        .unwrap();
+                    } else {
+                        warn!(logger, "Recorded username mismatch, not adding";
+                              "nixpkgs-handle" => %handle,
+                              "github-id" => %github_id,
+                        );
+                    }
                 }
             }
             TeamAction::Keep(handle) => {
@@ -84,26 +109,28 @@ pub fn sync_team(logger: slog::Logger, github: Github, maintainers: MaintainerLi
             }
         }
     }
-
 }
 
 #[derive(Debug, PartialEq)]
 enum TeamAction {
-    Add(Handle),
+    Add(GitHubName, Handle),
     Remove(GitHubName),
     Keep(Handle),
 }
 
-fn maintainer_team_diff(maintainers: MaintainerList, teammembers: &HashMap<GitHubID, GitHubName>) -> HashMap<GitHubID, TeamAction> {
+fn maintainer_team_diff(
+    maintainers: MaintainerList,
+    teammembers: &HashMap<GitHubID, GitHubName>,
+) -> HashMap<GitHubID, TeamAction> {
     let mut diff: HashMap<GitHubID, TeamAction> = maintainers
         .into_iter()
-        .filter_map(|(handle, m)|
-                    if teammembers.contains_key(&m.github_id?) {
-                        Some((m.github_id?, TeamAction::Keep(handle)))
-                    } else {
-                        Some((m.github_id?, TeamAction::Add(handle)))
-                    }
-        )
+        .filter_map(|(handle, m)| {
+            if teammembers.contains_key(&m.github_id?) {
+                Some((m.github_id?, TeamAction::Keep(handle)))
+            } else {
+                Some((m.github_id?, TeamAction::Add(m.github?, handle)))
+            }
+        })
         .collect();
 
     for (github_id, github_name) in teammembers {
@@ -128,35 +155,45 @@ mod tests {
             (GitHubID::new(1), GitHubName::new("alice")),
             (GitHubID::new(2), GitHubName::new("bob")),
         ]
-            .into_iter()
-            .collect();
+        .into_iter()
+        .collect();
 
         let wanted = MaintainerList::new(
             vec![
-                (Handle::new("bob"), Information {
-                    email: "bob@example.com".into(),
-                    name: Some("Bob".into()),
-                    github: Some(GitHubName::new("bob")),
-                    github_id: Some(GitHubID::new(2))
-                }),
-                (Handle::new("charlie"), Information {
-                    email: "charlie@example.com".into(),
-                    name: Some("Charlie".into()),
-                    github: Some(GitHubName::new("charlie")),
-                    github_id: Some(GitHubID::new(3))
-                }),
-
+                (
+                    Handle::new("bob"),
+                    Information {
+                        email: "bob@example.com".into(),
+                        name: Some("Bob".into()),
+                        github: Some(GitHubName::new("bob")),
+                        github_id: Some(GitHubID::new(2)),
+                    },
+                ),
+                (
+                    Handle::new("charlie"),
+                    Information {
+                        email: "charlie@example.com".into(),
+                        name: Some("Charlie".into()),
+                        github: Some(GitHubName::new("charlie")),
+                        github_id: Some(GitHubID::new(3)),
+                    },
+                ),
             ]
-                .into_iter()
-                .collect()
+            .into_iter()
+            .collect(),
         );
 
         assert_eq!(
             vec![
-                (GitHubID::new(1), TeamAction::Remove(GitHubName::new("alice"))),
+                (
+                    GitHubID::new(1),
+                    TeamAction::Remove(GitHubName::new("alice"))
+                ),
                 (GitHubID::new(2), TeamAction::Keep),
                 (GitHubID::new(3), TeamAction::Add),
-            ].into_iter().collect::<HashMap<GitHubID, TeamAction>>(),
+            ]
+            .into_iter()
+            .collect::<HashMap<GitHubID, TeamAction>>(),
             maintainer_team_diff(wanted, &on_github)
         );
     }
