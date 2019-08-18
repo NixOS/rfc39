@@ -71,6 +71,9 @@ struct SyncTeamParams {
 
     #[structopt(long = "dry-run")]
     pub dry_run: bool,
+
+    #[structopt(long = "limit")]
+    pub limit: Option<u64>,
 }
 
 #[derive(Debug, StructOpt)]
@@ -121,6 +124,7 @@ fn main() {
             &team_info.organization,
             team_info.team_id,
             team_info.dry_run,
+            team_info.limit,
         ),
         ExecMode::ListTeams(team_info) => op_sync_team::list_teams(github, &team_info.organization),
     }

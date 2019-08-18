@@ -23,6 +23,7 @@ pub fn sync_team(
     org: &str,
     team_id: u64,
     dry_run: bool,
+    limit: Option<u64>,
 ) {
     let mut rt = Runtime::new().unwrap();
 
@@ -52,20 +53,46 @@ pub fn sync_team(
         .collect();
 
     let diff = maintainer_team_diff(maintainers, &current_members);
+    let mut noops = 0;
+    let mut additions = 0;
+    let mut removals = 0;
     for (github_id, action) in diff {
+        if let Some(limit) = limit {
+            if (additions + removals) >= limit {
+                info!(logger, "Hit maximum change limit";
+                      "changed" => %(additions + removals),
+                      "limit" => %format!("{:?}", limit),
+                      "additions" => %additions,
+                      "removals" => %removals,
+                      "noops" => %noops,
+                );
+                return;
+            }
+        }
         match action {
             TeamAction::Add(github_name, handle) => {
+                additions += 1;
                 if dry_run {
                     info!(logger, "Would add user to the team";
                           "nixpkgs-handle" => %handle,
                           "github-name" => %github_name,
                           "github-id" => %github_id,
+                          "changed" => %(additions + removals),
+                          "limit" => %format!("{:?}", limit),
+                          "additions" => %additions,
+                          "removals" => %removals,
+                          "noops" => %noops,
                     );
                 } else {
                     info!(logger, "Adding user to the team";
                           "nixpkgs-handle" => %handle,
                           "github-name" => %github_name,
                           "github-id" => %github_id,
+                          "changed" => %(additions + removals),
+                          "limit" => %format!("{:?}", limit),
+                          "additions" => %additions,
+                          "removals" => %removals,
+                          "noops" => %noops,
                     );
 
                     // verify the ID and name still match
@@ -89,21 +116,38 @@ pub fn sync_team(
                 }
             }
             TeamAction::Keep(handle) => {
+                noops += 1;
                 trace!(logger, "Keeping user on the team";
                        "nixpkgs-handle" => %handle,
                        "github-id" => %github_id,
+                       "changed" => %(additions + removals),
+                       "limit" => %format!("{:?}", limit),
+                       "additions" => %additions,
+                       "removals" => %removals,
+                       "noops" => %noops,
                 );
             }
             TeamAction::Remove(handle) => {
+                removals += 1;
                 if dry_run {
                     info!(logger, "Would remove user from the team";
                           "nixpkgs-handle" => %handle,
                           "github-id" => %github_id,
+                          "changed" => %(additions + removals),
+                          "limit" => %format!("{:?}", limit),
+                          "additions" => %additions,
+                          "removals" => %removals,
+                          "noops" => %noops,
                     );
                 } else {
                     info!(logger, "Removing user from the team";
                           "nixpkgs-handle" => %handle,
                           "github-id" => %github_id,
+                          "changed" => %(additions + removals),
+                          "limit" => %format!("{:?}", limit),
+                          "additions" => %additions,
+                          "removals" => %removals,
+                          "noops" => %noops,
                     );
                 }
             }
