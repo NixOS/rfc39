@@ -194,6 +194,12 @@
     githubId = 46590321;
     name = "xrelkd";
   };
+  apeyroux = {
+    email = "alex@px.io";
+    github = "apeyroux";
+    githubId = 1078530;
+    name = "Alexandre Peyroux";
+  };
 
 /*
 
@@ -659,12 +665,6 @@
     github = "apeschar";
     githubId = 122977;
     name = "Albert Peschar";
-  };
-  apeyroux = {
-    email = "alex@px.io";
-    github = "apeyroux";
-    githubId = 1078530;
-    name = "Alexandre Peyroux";
   };
   ar1a = {
     email = "aria@ar1as.space";
