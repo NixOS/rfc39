@@ -199,6 +199,7 @@
     github = "apeyroux";
     githubId = 1078530;
     name = "Alexandre Peyroux";
+  };
   suhr = {
     email = "suhr@i2pmail.org";
     github = "suhr";
