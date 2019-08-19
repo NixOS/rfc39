@@ -177,7 +177,7 @@
   };
 
 
-  # group 3
+  # group 3 2019-08-19
   tadeokondrak = {
     email = "me@tadeo.ca";
     github = "tadeokondrak";
@@ -200,6 +200,27 @@
     githubId = 1078530;
     name = "Alexandre Peyroux";
   };
+  carlosdagos = {
+    email = "m@cdagostino.io";
+    github = "carlosdagos";
+    githubId = 686190;
+    name = "Carlos D'Agostino";
+  };
+  doronbehar = {
+    email = "me@doronbehar.com";
+    github = "doronbehar";
+    githubId = 10998835;
+    name = "Doron Behar";
+  };
+  tomberek = {
+    email = "tomberek@gmail.com";
+    github = "tomberek";
+    githubId = 178444;
+    name = "Thomas Bereknyei";
+  };
+
+
+  # group 4 2019-08-
 
 /*
 
@@ -1185,12 +1206,6 @@
     githubId = 5555066;
     name = "Andrew Cann";
   };
-  carlosdagos = {
-    email = "m@cdagostino.io";
-    github = "carlosdagos";
-    githubId = 686190;
-    name = "Carlos D'Agostino";
-  };
   carlsverre = {
     email = "accounts@carlsverre.com";
     github = "carlsverre";
@@ -1780,12 +1795,6 @@
     github = "domenkozar";
     githubId = 126339;
     name = "Domen Kozar";
-  };
-  doronbehar = {
-    email = "me@doronbehar.com";
-    github = "doronbehar";
-    githubId = 10998835;
-    name = "Doron Behar";
   };
   dotlambda = {
     email = "rschuetz17@gmail.com";
@@ -6359,12 +6368,6 @@
     github = "Tomahna";
     githubId = 8577941;
     name = "Kevin Rauscher";
-  };
-  tomberek = {
-    email = "tomberek@gmail.com";
-    github = "tomberek";
-    githubId = 178444;
-    name = "Thomas Bereknyei";
   };
   tomsmeets = {
     email = "tom.tsmeets@gmail.com";
