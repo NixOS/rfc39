@@ -279,12 +279,7 @@
   };
 
 
-  # group 4 2019-08-
-
-/*
-
-
-
+  # group 4 2019-08-20, top N from the list
   "0x4A6F" = {
     email = "0x4A6F@shackspace.de";
     name = "Joachim Ernst";
@@ -464,6 +459,9 @@
     github = "aforemny";
     name = "Alexander Foremny";
   };
+
+
+/*
   afranchuk = {
     email = "alex.franchuk@gmail.com";
     github = "afranchuk";
@@ -590,6 +588,9 @@
     githubId = 15623522;
     name = "Amar Paul";
   };
+
+
+
   ambrop72 = {
     email = "ambrop7@gmail.com";
     github = "ambrop72";
