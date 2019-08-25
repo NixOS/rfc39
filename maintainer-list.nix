@@ -461,7 +461,6 @@
   };
 
 
-/*
   afranchuk = {
     email = "alex.franchuk@gmail.com";
     github = "afranchuk";
@@ -625,6 +624,14 @@
     githubId = 858965;
     name = "Andrew Morsillo";
   };
+  chreekat = {
+    email = "b@chreekat.net";
+    github = "chreekat";
+    githubId = 538538;
+    name = "Bryan Richter";
+  };
+
+    /*
   andersk = {
     email = "andersk@mit.edu";
     github = "andersk";
@@ -694,6 +701,9 @@
     github = "andsild";
     name = "Anders Sildnes";
   };
+
+
+
   aneeshusa = {
     email = "aneeshusa@gmail.com";
     github = "aneeshusa";
@@ -935,6 +945,7 @@
     githubId = 18467667;
     name = "Alexander Bantyev";
   };
+
   bandresen = {
     email = "bandresen@gmail.com";
     github = "bandresen";
@@ -1369,12 +1380,6 @@
     github = "chpatrick";
     githubId = 832719;
     name = "Patrick Chilton";
-  };
-  chreekat = {
-    email = "b@chreekat.net";
-    github = "chreekat";
-    githubId = 538538;
-    name = "Bryan Richter";
   };
   chris-martin = {
     email = "ch.martin@gmail.com";
