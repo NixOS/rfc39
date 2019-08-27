@@ -26,7 +26,7 @@ mod op_backfill;
 mod op_blame_author;
 mod op_check_handles;
 mod op_sync_team;
-use hubcaps::{InstallationTokenGenerator, JWTCredentials, Credentials, Github};
+use hubcaps::{Credentials, Github, InstallationTokenGenerator, JWTCredentials};
 use std::env;
 
 // NOTE: DO NOT MAKE "Debug"! This will leak secrets
@@ -115,8 +115,9 @@ fn main() {
 
     let github_auth = nix::nix_instantiate_file_to_struct::<GitHubAuth>(
         logger.new(o!()),
-        &inputs.credential_file
-    ).expect("Failed to parse the credential file");
+        &inputs.credential_file,
+    )
+    .expect("Failed to parse the credential file");
 
     let mut private_key = Vec::new();
     File::open(&github_auth.private_key_file)
@@ -126,17 +127,12 @@ fn main() {
 
     let github = Github::new(
         String::from("NixOS/rfcs#39 (hubcaps)"),
-        Credentials::InstallationToken(
-            InstallationTokenGenerator::new(
-                github_auth.installation_id,
-                JWTCredentials::new(
-                    github_auth.app_id,
-                    private_key,
-                ).unwrap()
-            )
-        )
-    ).unwrap();
-
+        Credentials::InstallationToken(InstallationTokenGenerator::new(
+            github_auth.installation_id,
+            JWTCredentials::new(github_auth.app_id, private_key).unwrap(),
+        )),
+    )
+    .unwrap();
 
     match inputs.mode {
         ExecMode::CheckHandles => op_check_handles::check_handles(
