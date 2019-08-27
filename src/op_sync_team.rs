@@ -52,6 +52,21 @@ pub fn sync_team(
         .into_iter()
         .collect();
 
+    debug!(logger, "Fetching existing invitations");
+    let pending_invites: Vec<GitHubName> = rt
+        .block_on(
+            github
+                .org(org)
+                .membership()
+                .invitations()
+                .filter_map(|invite| Some(GitHubName::new(invite.login?)))
+                .collect(),
+        )
+        .expect("failed to list existing invitations");
+    debug!(logger, "Fetched invitations.";
+           "pending_invitations" => pending_invites.len()
+    );
+
     let diff = maintainer_team_diff(maintainers, &current_members);
     let mut noops = 0;
     let mut additions = 0;
@@ -71,9 +86,9 @@ pub fn sync_team(
         }
         match action {
             TeamAction::Add(github_name, handle) => {
-                additions += 1;
-                if dry_run {
-                    info!(logger, "Would add user to the team";
+                if pending_invites.contains(&github_name) {
+                    noops += 1;
+                    debug!(logger, "User already has a pending invitation";
                           "nixpkgs-handle" => %handle,
                           "github-name" => %github_name,
                           "github-id" => %github_id,
@@ -84,35 +99,49 @@ pub fn sync_team(
                           "noops" => %noops,
                     );
                 } else {
-                    info!(logger, "Adding user to the team";
-                          "nixpkgs-handle" => %handle,
-                          "github-name" => %github_name,
-                          "github-id" => %github_id,
-                          "changed" => %(additions + removals),
-                          "limit" => %format!("{:?}", limit),
-                          "additions" => %additions,
-                          "removals" => %removals,
-                          "noops" => %noops,
-                    );
-
-                    // verify the ID and name still match
-                    let user = rt
-                        .block_on(github.users().get(&format!("{}", github_name)))
-                        .unwrap();
-
-                    if GitHubID::new(user.id) == github_id {
-                        rt.block_on(team_actions.add_user(
-                            &format!("{}", github_name),
-                            TeamMemberOptions {
-                                role: TeamMemberRole::Member,
-                            },
-                        ))
-                        .unwrap();
-                    } else {
-                        warn!(logger, "Recorded username mismatch, not adding";
+                    additions += 1;
+                    if dry_run {
+                        info!(logger, "Would add user to the team";
                               "nixpkgs-handle" => %handle,
+                              "github-name" => %github_name,
                               "github-id" => %github_id,
+                              "changed" => %(additions + removals),
+                              "limit" => %format!("{:?}", limit),
+                              "additions" => %additions,
+                              "removals" => %removals,
+                              "noops" => %noops,
                         );
+                    } else {
+                        info!(logger, "Adding user to the team";
+                              "nixpkgs-handle" => %handle,
+                              "github-name" => %github_name,
+                              "github-id" => %github_id,
+                              "changed" => %(additions + removals),
+                              "limit" => %format!("{:?}", limit),
+                              "additions" => %additions,
+                              "removals" => %removals,
+                              "noops" => %noops,
+                        );
+
+                        // verify the ID and name still match
+                        let user = rt
+                            .block_on(github.users().get(&format!("{}", github_name)))
+                            .unwrap();
+
+                        if GitHubID::new(user.id) == github_id {
+                            rt.block_on(team_actions.add_user(
+                                &format!("{}", github_name),
+                                TeamMemberOptions {
+                                    role: TeamMemberRole::Member,
+                                },
+                            ))
+                                .unwrap();
+                        } else {
+                            warn!(logger, "Recorded username mismatch, not adding";
+                                  "nixpkgs-handle" => %handle,
+                                  "github-id" => %github_id,
+                            );
+                        }
                     }
                 }
             }

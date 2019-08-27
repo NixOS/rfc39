@@ -24,4 +24,4 @@ tempfile = "3"
 tokio = "0.1.22"
 
 [patch.crates-io]
-hubcaps = { git = "https://github.com/softprops/hubcaps.git", branch = "master", rev="dfd133955db5a3d9dafc181e44f557179ff91bf6" }
+hubcaps = { git = "https://github.com/grahamc/hubcaps.git", branch = "invitations", rev="2a3d989999fea815ef9ad004d93686e923020adf" }
