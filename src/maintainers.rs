@@ -109,7 +109,7 @@ mod tests {
 
     #[test]
     pub fn test_load_9175a201bbb28e679d72e9f7d28c84ab7d1f742_reduced() {
-        let logger = rfc39::default_logger();
+        let logger = rfc39::test_logger();
 
         let sample = Path::new("./samples/9175a201bbb28e679d72e9f7d28c84ab7d1f742b.reduced.nix");
         let expect = MaintainerList {
@@ -150,7 +150,7 @@ mod tests {
 
     #[test]
     pub fn test_load_9175a201bbb28e679d72e9f7d28c84ab7d1f742_proposed() {
-        let logger = rfc39::default_logger();
+        let logger = rfc39::test_logger();
 
         let sample = Path::new("./samples/9175a201bbb28e679d72e9f7d28c84ab7d1f742b.proposed.nix");
         let expect = MaintainerList {
@@ -191,7 +191,7 @@ mod tests {
 
     #[test]
     pub fn test_load_9175a201bbb28e679d72e9f7d28c84ab7d1f742() {
-        let logger = rfc39::default_logger();
+        let logger = rfc39::test_logger();
 
         let sample = Path::new("./samples/9175a201bbb28e679d72e9f7d28c84ab7d1f742b.nix");
         MaintainerList::load(logger, sample).unwrap();
@@ -199,7 +199,7 @@ mod tests {
 
     #[test]
     pub fn test_load_stderr() {
-        let logger = rfc39::default_logger();
+        let logger = rfc39::test_logger();
 
         let sample = Path::new("./samples/stderr.nix");
         MaintainerList::load(logger, sample).unwrap();

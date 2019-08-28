@@ -101,7 +101,7 @@ struct ListTeamParams {
 }
 
 fn main() {
-    let logger = rfc39::default_logger();
+    let (logger, scopes) = rfc39::default_logger();
 
     let inputs = Options::from_args();
 
