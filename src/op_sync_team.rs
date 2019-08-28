@@ -71,6 +71,7 @@ pub fn sync_team(
     let mut noops = 0;
     let mut additions = 0;
     let mut removals = 0;
+    let mut errors = 0;
     for (github_id, action) in diff {
         if let Some(limit) = limit {
             if (additions + removals) >= limit {
@@ -80,6 +81,7 @@ pub fn sync_team(
                       "additions" => %additions,
                       "removals" => %removals,
                       "noops" => %noops,
+                      "errors" => %errors,
                 );
                 return;
             }
@@ -89,14 +91,15 @@ pub fn sync_team(
                 if pending_invites.contains(&github_name) {
                     noops += 1;
                     debug!(logger, "User already has a pending invitation";
-                          "nixpkgs-handle" => %handle,
-                          "github-name" => %github_name,
-                          "github-id" => %github_id,
-                          "changed" => %(additions + removals),
-                          "limit" => %format!("{:?}", limit),
-                          "additions" => %additions,
-                          "removals" => %removals,
-                          "noops" => %noops,
+                           "nixpkgs-handle" => %handle,
+                           "github-name" => %github_name,
+                           "github-id" => %github_id,
+                           "changed" => %(additions + removals),
+                           "limit" => %format!("{:?}", limit),
+                           "additions" => %additions,
+                           "removals" => %removals,
+                           "noops" => %noops,
+                           "errors" => %errors,
                     );
                 } else {
                     additions += 1;
@@ -110,6 +113,7 @@ pub fn sync_team(
                               "additions" => %additions,
                               "removals" => %removals,
                               "noops" => %noops,
+                              "errors" => %errors,
                         );
                     } else {
                         info!(logger, "Adding user to the team";
@@ -121,26 +125,42 @@ pub fn sync_team(
                               "additions" => %additions,
                               "removals" => %removals,
                               "noops" => %noops,
+                              "errors" => %errors,
                         );
 
                         // verify the ID and name still match
-                        let user = rt
-                            .block_on(github.users().get(&format!("{}", github_name)))
-                            .unwrap();
-
-                        if GitHubID::new(user.id) == github_id {
-                            rt.block_on(team_actions.add_user(
-                                &format!("{}", github_name),
-                                TeamMemberOptions {
-                                    role: TeamMemberRole::Member,
-                                },
-                            ))
-                                .unwrap();
-                        } else {
-                            warn!(logger, "Recorded username mismatch, not adding";
-                                  "nixpkgs-handle" => %handle,
-                                  "github-id" => %github_id,
-                            );
+                        match rt.block_on(github.users().get(&format!("{}", github_name))) {
+                            Ok(user) => {
+                                if GitHubID::new(user.id) == github_id {
+                                    rt.block_on(team_actions.add_user(
+                                        &format!("{}", github_name),
+                                        TeamMemberOptions {
+                                            role: TeamMemberRole::Member,
+                                        },
+                                    ))
+                                        .unwrap();
+                                } else {
+                                    warn!(logger, "Recorded username mismatch, not adding";
+                                          "nixpkgs-handle" => %handle,
+                                          "github-id" => %github_id,
+                                    );
+                                }
+                            },
+                            Err(e) => {
+                                additions -= 1;
+                                errors += 1;
+                                warn!(logger, "Failed to fetch user by name, decrementing additions, incrementing noops. error: {:#?}", e;
+                                      "nixpkgs-handle" => %handle,
+                                      "github-name" => %github_name,
+                                      "github-id" => %github_id,
+                                      "changed" => %(additions + removals),
+                                      "limit" => %format!("{:?}", limit),
+                                      "additions" => %additions,
+                                      "removals" => %removals,
+                                      "noops" => %noops,
+                                      "errors" => %errors,
+                                );
+                            }
                         }
                     }
                 }
