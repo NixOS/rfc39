@@ -32,7 +32,6 @@ mod op_blame_author;
 mod op_check_handles;
 mod op_sync_team;
 use hubcaps::{Credentials, Github, InstallationTokenGenerator, JWTCredentials};
-use prometheus::IntCounter;
 
 /// Github Authentication information for the GitHub app.
 /// When creating the application, the only permission it needs
@@ -53,14 +52,6 @@ pub struct GitHubAuth {
     pub installation_id: u64,
 }
 
-lazy_static! {
-    static ref MAINTAINER_NIX_LOAD_FAILURE_COUNTER: IntCounter = register_int_counter!(
-        "maintainer_nix_load_failure",
-        "Failures to load maintainers.nix"
-    )
-    .unwrap();
-}
-
 fn load_maintainer_file(logger: slog::Logger, src: &Path) -> Result<MaintainerList, ExitError> {
     let maintainers_file = src.canonicalize()?;
 
@@ -72,14 +63,18 @@ fn load_maintainer_file(logger: slog::Logger, src: &Path) -> Result<MaintainerLi
     Ok(MaintainerList::load(logger.clone(), &maintainers_file)?)
 }
 
-fn main() {
-    let (logger, _scopes) = rfc39::default_logger();
-
-    let inputs = Options::from_args();
+fn execute_ops(logger: slog::Logger, inputs: Options) {
+    // Note: I wanted these in a lazy_static!, but that meant metrics
+    // which would report a 0 would never get reported at all, since
+    // they aren't accessed.... and lazy_static! is lazy.
+    let maintainer_nix_load_failure_counter = register_int_counter!(
+        "maintainer_nix_load_failure",
+        "Failures to load maintainers.nix"
+    ).unwrap();
 
     let maintainers = load_maintainer_file(logger.new(o!()), &inputs.maintainers)
         .map_err(|d| {
-            MAINTAINER_NIX_LOAD_FAILURE_COUNTER.inc();
+            maintainer_nix_load_failure_counter.inc();
             d
         })
         .unwrap();
@@ -132,5 +127,28 @@ fn main() {
             team_info.limit,
         ),
         ExecMode::ListTeams(team_info) => op_sync_team::list_teams(github, &team_info.organization),
+    }
+}
+
+fn main() {
+    let (logger, _scopes) = rfc39::default_logger();
+
+    let inputs = Options::from_args();
+
+    let dump_metrics = inputs.dump_metrics;
+
+    execute_ops(logger, inputs);
+
+    if dump_metrics {
+        use prometheus::Encoder;
+        let mut buffer = Vec::<u8>::new();
+        prometheus::default_registry();
+        prometheus::TextEncoder::new()
+            .encode(
+                &prometheus::default_registry().gather(),
+                &mut buffer
+            )
+            .unwrap();
+        println!("metrics:\n {}", String::from_utf8(buffer).unwrap());
     }
 }
