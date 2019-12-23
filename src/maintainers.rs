@@ -27,7 +27,7 @@ impl Handle {
     }
 }
 
-#[derive(Debug, Eq, Hash, Clone, Deserialize)]
+#[derive(Debug, Eq, Clone, Deserialize)]
 pub struct GitHubName(String);
 impl std::fmt::Display for GitHubName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -37,6 +37,11 @@ impl std::fmt::Display for GitHubName {
 impl PartialEq for GitHubName {
     fn eq(&self, other: &Self) -> bool {
         self.0.to_lowercase() == other.0.to_lowercase()
+    }
+}
+impl std::hash::Hash for GitHubName {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.to_lowercase().hash(state);
     }
 }
 impl GitHubName {
