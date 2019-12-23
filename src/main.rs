@@ -32,6 +32,7 @@ mod op_blame_author;
 mod op_check_handles;
 mod op_sync_team;
 use hubcaps::{Credentials, Github, InstallationTokenGenerator, JWTCredentials};
+use std::thread;
 
 /// Github Authentication information for the GitHub app.
 /// When creating the application, the only permission it needs
@@ -132,7 +133,12 @@ fn execute_ops(logger: slog::Logger, inputs: Options) -> Result<(), ExitError> {
 }
 
 fn main() {
-    let op_failed_counter = register_int_counter!("op_failure", "Execution failed").unwrap();
+    let op_success_counter =
+        register_int_counter!("op_suceess_counter", "Execution completed without fault.").unwrap();
+    let op_failed_counter =
+        register_int_counter!("op_failure_counter", "Execution failed").unwrap();
+    let op_panic_counter =
+        register_int_counter!("op_panic_counter", "Execution of the operation panicked").unwrap();
 
     let (logger, _scopes) = rfc39::default_logger();
 
@@ -140,9 +146,21 @@ fn main() {
 
     let dump_metrics = inputs.dump_metrics;
 
-    let result = execute_ops(logger, inputs).map_err(|e| {
+    let handle = {
+        let logger = logger.new(o!());
+        thread::spawn(move || {
+            execute_ops(logger, inputs).map(|ok| {
+                op_success_counter.inc();
+                ok
+            })
+        })
+    };
+
+    let thread_result: Result<Result<(), ExitError>, _> = handle.join().map_err(|thread_err| {
+        warn!(logger, "Op-handling child panicked: {:#?}", thread_err);
         op_failed_counter.inc();
-        e
+        op_panic_counter.inc();
+        thread_err
     });
 
     if dump_metrics {
@@ -155,5 +173,5 @@ fn main() {
         println!("metrics:\n {}", String::from_utf8(buffer).unwrap());
     }
 
-    result.unwrap();
+    thread_result.unwrap().unwrap();
 }
