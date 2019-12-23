@@ -15,7 +15,7 @@ extern crate lazy_static;
 
 use std::fs::File;
 use std::io::Read;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 mod cli;
 use cli::{ExecMode, Options};
@@ -49,18 +49,28 @@ pub struct GitHubAuth {
     pub installation_id: u64,
 }
 
+lazy_static! {}
+
+fn load_maintainer_file(
+    logger: slog::Logger,
+    src: &Path,
+) -> Result<MaintainerList, serde_json::error::Error> {
+    let maintainers_file = src.canonicalize().unwrap();
+
+    info!(logger, "Loading maintainer information";
+          "from" => src.display(),
+          "absolute" => maintainers_file.display()
+    );
+
+    MaintainerList::load(logger.clone(), &maintainers_file)
+}
+
 fn main() {
     let (logger, _scopes) = rfc39::default_logger();
 
     let inputs = Options::from_args();
 
-    let maintainers_file = inputs.maintainers.canonicalize().unwrap();
-    info!(logger, "Loading maintainer information";
-          "from" => inputs.maintainers.display(),
-          "absolute" => maintainers_file.display()
-    );
-
-    let maintainers = MaintainerList::load(logger.clone(), &maintainers_file).unwrap();
+    let maintainers = load_maintainer_file(logger.new(o!()), &inputs.maintainers).unwrap();
 
     let github_auth = nix::nix_instantiate_file_to_struct::<GitHubAuth>(
         logger.new(o!()),
@@ -91,13 +101,13 @@ fn main() {
         ExecMode::BackfillIDs => op_backfill::backfill_ids(
             logger.new(o!("exec-mode" => "BackfillIDs")),
             github,
-            &maintainers_file,
+            &inputs.maintainers,
             maintainers,
         ),
         ExecMode::BlameAuthor => op_blame_author::report(
             logger.new(o!("exec-mode" => "BlameAuthor")),
             github,
-            &maintainers_file,
+            &inputs.maintainers,
             maintainers,
         ),
         ExecMode::SyncTeam(team_info) => op_sync_team::sync_team(
