@@ -19,6 +19,5 @@ pub fn test_logger() -> slog::Logger {
     let mut builder = TerminalLoggerBuilder::new();
     builder.level(Severity::Debug);
     builder.destination(Destination::Stderr);
-    let drain = builder.build().unwrap();
-    drain
+    builder.build().unwrap()
 }
