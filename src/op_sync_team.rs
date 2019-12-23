@@ -27,7 +27,7 @@ pub fn sync_team(
     team_id: u64,
     dry_run: bool,
     limit: Option<u64>,
-) {
+) -> Result<(), ExitError> {
     let mut rt = Runtime::new().unwrap();
 
     let team_actions = github.org(org).teams().get(team_id);
@@ -86,7 +86,7 @@ pub fn sync_team(
                       "noops" => %noops,
                       "errors" => %errors,
                 );
-                return;
+                return Ok(());
             }
         }
         match action {
@@ -221,6 +221,8 @@ pub fn sync_team(
             }
         }
     }
+
+    Ok(())
 }
 
 #[derive(Debug, PartialEq)]
