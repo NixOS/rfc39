@@ -272,7 +272,7 @@ mod tests {
                 (
                     Handle::new("bob"),
                     Information {
-                        email: "bob@example.com".into(),
+                        email: Some("bob@example.com".into()),
                         name: Some("Bob".into()),
                         github: Some(GitHubName::new("bob")),
                         github_id: Some(GitHubID::new(2)),
@@ -281,7 +281,7 @@ mod tests {
                 (
                     Handle::new("charlie"),
                     Information {
-                        email: "charlie@example.com".into(),
+                        email: Some("charlie@example.com".into()),
                         name: Some("Charlie".into()),
                         github: Some(GitHubName::new("charlie")),
                         github_id: Some(GitHubID::new(3)),

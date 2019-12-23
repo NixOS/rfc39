@@ -68,7 +68,7 @@ impl GitHubID {
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
 pub struct Information {
-    pub email: String,
+    pub email: Option<String>,
     pub name: Option<String>,
     pub github: Option<GitHubName>,
     #[serde(rename = "githubId")]
@@ -115,7 +115,7 @@ mod tests {
                 (
                     Handle("0x4A6F".into()),
                     Information {
-                        email: "0x4A6F@shackspace.de".into(),
+                        email: Some("0x4A6F@shackspace.de".into()),
                         name: Some("Joachim Ernst".into()),
                         github: Some(GitHubName("0x4A6F".into())),
                         github_id: None,
@@ -124,7 +124,7 @@ mod tests {
                 (
                     Handle("1000101".into()),
                     Information {
-                        email: "jan.hrnko@satoshilabs.com".into(),
+                        email: Some("jan.hrnko@satoshilabs.com".into()),
                         name: Some("Jan Hrnko".into()),
                         github: Some(GitHubName("1000101".into())),
                         github_id: None,
@@ -133,7 +133,7 @@ mod tests {
                 (
                     Handle("a1russell".into()),
                     Information {
-                        email: "adamlr6+pub@gmail.com".into(),
+                        email: Some("adamlr6+pub@gmail.com".into()),
                         name: Some("Adam Russell".into()),
                         github: None,
                         github_id: None,
@@ -156,7 +156,7 @@ mod tests {
                 (
                     Handle("0x4A6F".into()),
                     Information {
-                        email: "0x4A6F@shackspace.de".into(),
+                        email: Some("0x4A6F@shackspace.de".into()),
                         name: Some("Joachim Ernst".into()),
                         github: Some(GitHubName("0x4A6F".into())),
                         github_id: None,
@@ -165,7 +165,7 @@ mod tests {
                 (
                     Handle("1000101".into()),
                     Information {
-                        email: "jan.hrnko@satoshilabs.com".into(),
+                        email: Some("jan.hrnko@satoshilabs.com".into()),
                         name: Some("Jan Hrnko".into()),
                         github: Some(GitHubName("1000101".into())),
                         github_id: Some(GitHubID(791309)),
@@ -174,7 +174,7 @@ mod tests {
                 (
                     Handle("a1russell".into()),
                     Information {
-                        email: "adamlr6+pub@gmail.com".into(),
+                        email: Some("adamlr6+pub@gmail.com".into()),
                         name: Some("Adam Russell".into()),
                         github: None,
                         github_id: Some(GitHubID(241628)),
