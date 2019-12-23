@@ -354,8 +354,19 @@ fn maintainer_team_diff(
     maintainers: MaintainerList,
     teammembers: &HashMap<GitHubID, GitHubName>,
 ) -> HashMap<GitHubID, TeamAction> {
+    let missing_github_handle = register_int_gauge!("rfc39_maintainer_missing_key_github", "Maintainers missing a github handle.").unwrap();
+    let missing_github_id = register_int_gauge!("rfc39_maintainer_missing_key_github_id", "Maintainers missing a github_id.").unwrap();
+
     let mut diff: HashMap<GitHubID, TeamAction> = maintainers
         .into_iter()
+        .inspect(|(_, maintainer)|{
+            if maintainer.github.is_none() {
+                missing_github_handle.inc();
+            }
+            if maintainer.github_id.is_none() {
+                missing_github_id.inc();
+            }
+        })
         .filter_map(|(handle, m)| {
             if teammembers.contains_key(&m.github_id?) {
                 Some((m.github_id?, TeamAction::Keep(handle)))
