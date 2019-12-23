@@ -2870,6 +2870,67 @@ rec {
         };
         resolvedDefaultFeatures = [ "default" "proc-macro" ];
       };
+    "prometheus 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)"
+      = rec {
+        crateName = "prometheus";
+        version = "0.7.0";
+        edition = "2018";
+        sha256 = "1wcafa78459f33x31081zi8yfacgalfgz40vbd2wdqkqaxnlhrsm";
+        authors = [
+          "overvenus@gmail.com"
+          "siddontang@gmail.com"
+          "vistaswx@gmail.com"
+        ];
+        dependencies = [
+          {
+            name = "cfg-if";
+            packageId = "cfg-if 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)";
+          }
+          {
+            name = "fnv";
+            packageId = "fnv 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)";
+          }
+          {
+            name = "lazy_static";
+            packageId = "lazy_static 1.3.0 (registry+https://github.com/rust-lang/crates.io-index)";
+          }
+          {
+            name = "protobuf";
+            packageId = "protobuf 2.8.1 (registry+https://github.com/rust-lang/crates.io-index)";
+            optional = true;
+          }
+          {
+            name = "quick-error";
+            packageId = "quick-error 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)";
+          }
+          {
+            name = "spin";
+            packageId = "spin 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)";
+          }
+        ];
+        features = {
+          "default" = [ "protobuf" ];
+          "gen" = [ "protobuf-codegen-pure" ];
+          "nightly" = [ "libc" ];
+          "process" = [ "libc" "procinfo" ];
+          "push" = [ "reqwest" "libc" ];
+        };
+        resolvedDefaultFeatures = [ "default" "protobuf" ];
+      };
+    "protobuf 2.8.1 (registry+https://github.com/rust-lang/crates.io-index)"
+      = rec {
+        crateName = "protobuf";
+        version = "2.8.1";
+        edition = "2015";
+        sha256 = "085agil4gwalkxwg33kz2pygfjj4yv39ch78ywgqgmgxvqv1hdj0";
+        authors = [
+          "Stepan Koltsov <stepan.koltsov@gmail.com>"
+        ];
+        features = {
+          "with-bytes" = [ "bytes" ];
+          "with-serde" = [ "serde" "serde_derive" ];
+        };
+      };
     "publicsuffix 1.5.2 (registry+https://github.com/rust-lang/crates.io-index)"
       = rec {
         crateName = "publicsuffix";
@@ -2904,6 +2965,19 @@ rec {
         features = {
           "default" = [ "remote_list" ];
           "remote_list" = [ "native-tls" ];
+        };
+      };
+    "quick-error 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)"
+      = rec {
+        crateName = "quick-error";
+        version = "1.2.2";
+        edition = "2015";
+        sha256 = "1w6kgwwv7p7zr0yyg5rb315lkk24bimywklwx7fsvsbwi10bjx4j";
+        authors = [
+          "Paul Colomiets <paul@colomiets.name>"
+          "Colin Kiegel <kiegel@gmx.de>"
+        ];
+        features = {
         };
       };
     "quote 0.6.13 (registry+https://github.com/rust-lang/crates.io-index)"
@@ -3694,6 +3768,10 @@ rec {
           {
             name = "lazy_static";
             packageId = "lazy_static 1.3.0 (registry+https://github.com/rust-lang/crates.io-index)";
+          }
+          {
+            name = "prometheus";
+            packageId = "prometheus 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)";
           }
           {
             name = "regex";
