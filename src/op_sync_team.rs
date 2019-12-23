@@ -77,14 +77,25 @@ pub fn sync_team(
     .unwrap();
 
     let github_add_user_histogram: Histogram =
-        register_histogram!("github_add_user", "Time to fetch a GitHub user").unwrap();
+        register_histogram!("github_add_user", "Time to add a GitHub user to a team").unwrap();
     let github_add_user_failures: IntCounter = register_int_counter!(
         "github_add_user_failures",
         "Number of failed attempts to add a user"
     )
     .unwrap();
 
-    let github_user_not_added_username_id_mismatch: IntGauge = register_int_gauge!(
+    let github_remove_user_histogram: Histogram = register_histogram!(
+        "github_remove_user",
+        "Time to remove a GitHub user from a team"
+    )
+    .unwrap();
+    let github_remove_user_failures: IntCounter = register_int_counter!(
+        "github_remove_user_failures",
+        "Number of failed attempts to remove a user"
+    )
+    .unwrap();
+
+    let github_user_unchanged_username_id_mismatch: IntGauge = register_int_gauge!(
         "github_username_id_mismatch",
         "Number of maintainers not added because of out of date usernames, due to a mismatched ID"
     )
@@ -93,6 +104,8 @@ pub fn sync_team(
     let mut rt = TrackedReactor {
         rt: Runtime::new().unwrap(),
     };
+
+    let do_it_live = !dry_run;
 
     let team_actions = github.org(org).teams().get(team_id);
     let team = rt
@@ -163,6 +176,7 @@ pub fn sync_team(
     let errors = register_int_counter!("team_sync_errors", "Total team errors").unwrap();
     for (github_id, action) in diff {
         let logger = logger.new(o!(
+            "dry-run" => dry_run,
             "github-id" => format!("{}", github_id),
             "changed" => additions.get() + removals.get(),
             "additions" => additions.get(),
@@ -187,49 +201,49 @@ pub fn sync_team(
                     debug!(logger, "User already has a pending invitation");
                 } else {
                     additions.inc();
-                    if dry_run {
-                        info!(logger, "Would add user to the team");
-                    } else {
-                        info!(logger, "Adding user to the team");
+                    info!(logger, "Adding user to the team");
 
+                    if do_it_live {
                         // verify the ID and name still match
                         let get_user = rt.block_on(
                             github.users().get(&format!("{}", github_name)),
                             &github_get_user_histogram,
                             &github_get_user_failures,
-                        );
-
-                        match get_user {
-                            Ok(user) => {
-                                if GitHubID::new(user.id) == github_id {
-                                    let add_attempt = rt.block_on(
-                                        team_actions.add_user(
-                                            &format!("{}", github_name),
-                                            TeamMemberOptions {
-                                                role: TeamMemberRole::Member,
-                                            },
-                                        ),
-                                        &github_add_user_histogram,
-                                        &github_add_user_failures,
-                                    );
-
-                                    match add_attempt {
-                                        Ok(_) => (),
-                                        Err(e) => {
-                                            errors.inc();
-                                            warn!(logger, "Failed to add a user to the team, not decrementing additions as it may have succeeded: {:#?}", e
-                                            );
-                                        }
-                                    }
-                                } else {
-                                    github_user_not_added_username_id_mismatch.inc();
-                                    warn!(logger, "Recorded username mismatch, not adding");
-                                }
-                            }
-                            Err(e) => {
+                        )
+                            .map_err(|e| {
                                 errors.inc();
-                                warn!(logger, "Failed to fetch user by name, incrementing noops. error: {:#?}", e
-                                );
+                                warn!(logger, "Failed to fetch user by name, incrementing noops. error: {:#?}", e);
+                                e
+                            })
+                            .map(|user| {
+                                if GitHubID::new(user.id) != github_id {
+                                    github_user_unchanged_username_id_mismatch.inc();
+                                    warn!(logger, "Recorded username mismatch, not adding");
+                                    None
+                                } else {
+                                    Some(user)
+                                }
+                            });
+
+                        if let Ok(Some(_user)) = get_user {
+                            let add_attempt = rt.block_on(
+                                team_actions.add_user(
+                                    &format!("{}", github_name),
+                                    TeamMemberOptions {
+                                        role: TeamMemberRole::Member,
+                                    },
+                                ),
+                                &github_add_user_histogram,
+                                &github_add_user_failures,
+                            );
+
+                            match add_attempt {
+                                Ok(_) => (),
+                                Err(e) => {
+                                    errors.inc();
+                                    warn!(logger, "Failed to add a user to the team, not decrementing additions as it may have succeeded: {:#?}", e
+                                    );
+                                }
                             }
                         }
                     }
@@ -243,15 +257,48 @@ pub fn sync_team(
                 noops.inc();
                 trace!(logger, "Keeping user on the team");
             }
-            TeamAction::Remove(handle) => {
+            TeamAction::Remove(github_name) => {
                 let logger = logger.new(o!(
-                    "nixpkgs-handle" => format!("{}", handle),                ));
+                    "github-name" => format!("{}", github_name),                ));
 
                 removals.inc();
-                if dry_run {
-                    info!(logger, "Would remove user from the team");
-                } else {
-                    info!(logger, "Removing user from the team");
+                info!(logger, "Removing user from the team");
+                if do_it_live {
+                    // verify the ID and name still match
+                    let get_user = rt
+                        .block_on(
+                            github.users().get(&format!("{}", github_name)),
+                            &github_get_user_histogram,
+                            &github_get_user_failures,
+                        )
+                        .map_err(|e| {
+                            errors.inc();
+                            warn!(
+                                logger,
+                                "Failed to fetch user by name, incrementing noops. error: {:#?}", e
+                            );
+                            e
+                        })
+                        .map(|user| {
+                            if GitHubID::new(user.id) != github_id {
+                                github_user_unchanged_username_id_mismatch.inc();
+                                warn!(logger, "Recorded username mismatch, not adding");
+                                None
+                            } else {
+                                Some(user)
+                            }
+                        });
+
+                    if let Ok(Some(_user)) = get_user {
+                        if let Err(e) = rt.block_on(
+                            team_actions.remove_user(&format!("{}", github_name)),
+                            &github_remove_user_histogram,
+                            &github_remove_user_failures,
+                        ) {
+                            errors.inc();
+                            warn!(logger, "Failed to remove a user from the team: {:#?}", e);
+                        }
+                    }
                 }
             }
         }
