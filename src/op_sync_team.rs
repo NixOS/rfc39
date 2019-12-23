@@ -10,7 +10,7 @@ use tokio::runtime::Runtime;
 
 lazy_static! {
     static ref GITHUB_CALLS: IntCounter = register_int_counter!(
-        "github_call_count",
+        "rfc39_github_call_count",
         "Code-level calls to GitHub API methods (not a count of actual calls made to GitHub.)"
     )
     .unwrap();
@@ -41,62 +41,68 @@ pub fn sync_team(
     GITHUB_CALLS.get();
 
     let get_team_histogram: Histogram =
-        register_histogram!("github_get_team", "Time to fetch a team").unwrap();
+        register_histogram!("rfc39_github_get_team", "Time to fetch a team").unwrap();
     let get_team_failures: IntCounter = register_int_counter!(
-        "github_get_team_failures",
+        "rfc39_github_get_team_failures",
         "Number of failed attempts to get a team"
     )
     .unwrap();
 
-    let get_team_members_histogram: Histogram =
-        register_histogram!("github_get_team_members", "Time to fetch team members").unwrap();
+    let get_team_members_histogram: Histogram = register_histogram!(
+        "rfc39_github_get_team_members",
+        "Time to fetch team members"
+    )
+    .unwrap();
     let get_team_members_failures: IntCounter = register_int_counter!(
-        "github_get_team_members_failures",
+        "rfc39_github_get_team_members_failures",
         "Number of failed attempts to get a team's members"
     )
     .unwrap();
     let current_team_member_gauge: IntGauge =
-        register_int_gauge!("github_team_member_count", "Fetched team members").unwrap();
+        register_int_gauge!("rfc39_github_team_member_count", "Fetched team members").unwrap();
 
     let get_invitations_histogram: Histogram =
-        register_histogram!("github_get_invitations", "Time to fetch invitations").unwrap();
+        register_histogram!("rfc39_github_get_invitations", "Time to fetch invitations").unwrap();
     let get_invitations_failures: IntCounter = register_int_counter!(
-        "github_get_team_invitation_failures",
+        "rfc39_github_get_team_invitation_failures",
         "Number of failed attempts to get a team's pending invitations"
     )
     .unwrap();
     let current_invitations_gauge: IntGauge =
-        register_int_gauge!("github_invitation_count", "Currently invited users").unwrap();
+        register_int_gauge!("rfc39_github_invitation_count", "Currently invited users").unwrap();
 
     let github_get_user_histogram: Histogram =
-        register_histogram!("github_get_user", "Time to fetch a GitHub user").unwrap();
+        register_histogram!("rfc39_github_get_user", "Time to fetch a GitHub user").unwrap();
     let github_get_user_failures: IntCounter = register_int_counter!(
-        "github_get_user_failures",
+        "rfc39_github_get_user_failures",
         "Number of failed attempts to get a user"
     )
     .unwrap();
 
-    let github_add_user_histogram: Histogram =
-        register_histogram!("github_add_user", "Time to add a GitHub user to a team").unwrap();
+    let github_add_user_histogram: Histogram = register_histogram!(
+        "rfc39_github_add_user",
+        "Time to add a GitHub user to a team"
+    )
+    .unwrap();
     let github_add_user_failures: IntCounter = register_int_counter!(
-        "github_add_user_failures",
+        "rfc39_github_add_user_failures",
         "Number of failed attempts to add a user"
     )
     .unwrap();
 
     let github_remove_user_histogram: Histogram = register_histogram!(
-        "github_remove_user",
+        "rfc39_github_remove_user",
         "Time to remove a GitHub user from a team"
     )
     .unwrap();
     let github_remove_user_failures: IntCounter = register_int_counter!(
-        "github_remove_user_failures",
+        "rfc39_github_remove_user_failures",
         "Number of failed attempts to remove a user"
     )
     .unwrap();
 
     let github_user_unchanged_username_id_mismatch: IntGauge = register_int_gauge!(
-        "github_username_id_mismatch",
+        "rfc39_github_username_id_mismatch",
         "Number of maintainers not added because of out of date usernames, due to a mismatched ID"
     )
     .unwrap();
@@ -159,7 +165,7 @@ pub fn sync_team(
     let diff = maintainer_team_diff(maintainers, &current_members);
 
     let limit_metric = register_int_gauge!(
-        "team_sync_change_limit",
+        "rfc39_team_sync_change_limit",
         "Total number of additions and changed allowed in a single run"
     )
     .unwrap();
@@ -169,11 +175,16 @@ pub fn sync_team(
 
     let limit: Option<i64> = limit.map(|lim| lim.try_into().unwrap());
 
-    let noops =
-        register_int_counter!("team_sync_noops", "Total count of noop team sync actions").unwrap();
-    let additions = register_int_counter!("team_sync_additions", "Total team additions").unwrap();
-    let removals = register_int_counter!("team_sync_removals", "Total team removals").unwrap();
-    let errors = register_int_counter!("team_sync_errors", "Total team errors").unwrap();
+    let noops = register_int_counter!(
+        "rfc39_team_sync_noops",
+        "Total count of noop team sync actions"
+    )
+    .unwrap();
+    let additions =
+        register_int_counter!("rfc39_team_sync_additions", "Total team additions").unwrap();
+    let removals =
+        register_int_counter!("rfc39_team_sync_removals", "Total team removals").unwrap();
+    let errors = register_int_counter!("rfc39_team_sync_errors", "Total team errors").unwrap();
     for (github_id, action) in diff {
         let logger = logger.new(o!(
             "dry-run" => dry_run,

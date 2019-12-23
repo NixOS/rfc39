@@ -16,6 +16,7 @@ extern crate lazy_static;
 #[macro_use]
 extern crate prometheus;
 
+use std::convert::TryInto;
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -72,7 +73,7 @@ fn execute_ops(logger: slog::Logger, inputs: Options) -> Result<(), ExitError> {
     // which would report a 0 would never get reported at all, since
     // they aren't accessed.... and lazy_static! is lazy.
     let maintainer_nix_load_failure_counter = register_int_counter!(
-        "maintainer_nix_load_failure",
+        "rfc39_maintainer_nix_load_failure",
         "Failures to load maintainers.nix"
     )
     .unwrap();
@@ -136,12 +137,29 @@ fn execute_ops(logger: slog::Logger, inputs: Options) -> Result<(), ExitError> {
 }
 
 fn main() {
-    let op_success_counter =
-        register_int_counter!("op_suceess_counter", "Execution completed without fault.").unwrap();
+    let begin_counter =
+        register_int_gauge!("rfc39_begin_seconds", "Execution started time").unwrap();
+    begin_counter.set(
+        time::SystemTime::now()
+            .duration_since(time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            .try_into()
+            .unwrap(),
+    );
+
+    let op_success_counter = register_int_counter!(
+        "rfc39_op_suceess_counter",
+        "Execution completed without fault."
+    )
+    .unwrap();
     let op_failed_counter =
-        register_int_counter!("op_failure_counter", "Execution failed").unwrap();
-    let op_panic_counter =
-        register_int_counter!("op_panic_counter", "Execution of the operation panicked").unwrap();
+        register_int_counter!("rfc39_op_failure_counter", "Execution failed").unwrap();
+    let op_panic_counter = register_int_counter!(
+        "rfc39_op_panic_counter",
+        "Execution of the operation panicked"
+    )
+    .unwrap();
 
     let (logger, _scopes) = rfc39::default_logger();
 
@@ -175,6 +193,16 @@ fn main() {
         op_panic_counter.inc();
         thread_err
     });
+
+    let exit_counter = register_int_gauge!("rfc39_stop_seconds", "Execution stopped time").unwrap();
+    exit_counter.set(
+        time::SystemTime::now()
+            .duration_since(time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            .try_into()
+            .unwrap(),
+    );
 
     if let Some(_metrics_handle) = metrics_handle {
         thread::sleep(time::Duration::from_millis(1000 * metrics_delay));
