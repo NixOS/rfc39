@@ -144,10 +144,7 @@ fn main() {
         let mut buffer = Vec::<u8>::new();
         prometheus::default_registry();
         prometheus::TextEncoder::new()
-            .encode(
-                &prometheus::default_registry().gather(),
-                &mut buffer
-            )
+            .encode(&prometheus::default_registry().gather(), &mut buffer)
             .unwrap();
         println!("metrics:\n {}", String::from_utf8(buffer).unwrap());
     }
