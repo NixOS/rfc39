@@ -1,15 +1,14 @@
+use crate::cli::ExitError;
 use crate::maintainers::{GitHubID, GitHubName, Handle, MaintainerList};
 use futures::stream::Stream;
 use hubcaps::teams::{TeamMemberOptions, TeamMemberRole};
-use std::convert::TryInto;
-use crate::cli::ExitError;
 use hubcaps::Github;
+use prometheus::{Histogram, IntCounter, IntGauge};
 use std::collections::HashMap;
+use std::convert::TryInto;
 use tokio::runtime::Runtime;
-use prometheus::{IntCounter, IntGauge, Histogram};
 
-lazy_static! {
-}
+lazy_static! {}
 
 pub fn list_teams(github: Github, org: &str) -> Result<(), ExitError> {
     let mut rt = Runtime::new().unwrap();
@@ -32,19 +31,39 @@ pub fn sync_team(
     dry_run: bool,
     limit: Option<u64>,
 ) -> Result<(), ExitError> {
-    let get_team_histogram: Histogram = register_histogram!("github_get_team", "Time to fetch a team").unwrap();
-    let get_team_failures: IntCounter = register_int_counter!("github_get_team_failures", "Number of failed attempts to get a team").unwrap();
+    let github_calls: IntCounter = register_int_counter!(
+        "github_call_count",
+        "Code-level calls to GitHub API methods (not a count of actual calls made to GitHub.)"
+    )
+    .unwrap();
 
-    let get_team_members_histogram: Histogram = register_histogram!("github_get_team_members", "Time to fetch team members").unwrap();
-    let get_team_members_failures: IntCounter = register_int_counter!("github_get_team_members_failures", "Number of failed attempts to get a team's members").unwrap();
-    let current_team_member_gauge: IntGauge = register_int_gauge!("github_team_member_count", "Fetched team members").unwrap();
+    let get_team_histogram: Histogram =
+        register_histogram!("github_get_team", "Time to fetch a team").unwrap();
+    let get_team_failures: IntCounter = register_int_counter!(
+        "github_get_team_failures",
+        "Number of failed attempts to get a team"
+    )
+    .unwrap();
 
-    let get_invitations_histogram: Histogram = register_histogram!("github_get_invitations", "Time to fetch invitations").unwrap();
-    let get_invitations_failures: IntCounter = register_int_counter!("github_get_team_invitation_failures", "Number of failed attempts to get a team's pending invitations").unwrap();
-    let current_invitations_gauge: IntGauge = register_int_gauge!("github_invitation_count", "Currently invited users").unwrap();
+    let get_team_members_histogram: Histogram =
+        register_histogram!("github_get_team_members", "Time to fetch team members").unwrap();
+    let get_team_members_failures: IntCounter = register_int_counter!(
+        "github_get_team_members_failures",
+        "Number of failed attempts to get a team's members"
+    )
+    .unwrap();
+    let current_team_member_gauge: IntGauge =
+        register_int_gauge!("github_team_member_count", "Fetched team members").unwrap();
 
-    let github_calls: IntCounter = register_int_counter!("github_call_count", "Code-level calls to GitHub API methods (not a count of actual calls made to GitHub.)").unwrap();
-
+    let get_invitations_histogram: Histogram =
+        register_histogram!("github_get_invitations", "Time to fetch invitations").unwrap();
+    let get_invitations_failures: IntCounter = register_int_counter!(
+        "github_get_team_invitation_failures",
+        "Number of failed attempts to get a team's pending invitations"
+    )
+    .unwrap();
+    let current_invitations_gauge: IntGauge =
+        register_int_gauge!("github_invitation_count", "Currently invited users").unwrap();
 
     let mut rt = Runtime::new().unwrap();
 
@@ -52,8 +71,7 @@ pub fn sync_team(
     let team = {
         github_calls.inc();
         let _timer = get_team_histogram.start_timer();
-        rt
-            .block_on(team_actions.get())
+        rt.block_on(team_actions.get())
             .map_err(|e| {
                 get_team_failures.inc();
                 e
@@ -73,20 +91,19 @@ pub fn sync_team(
     let current_members: HashMap<GitHubID, GitHubName> = {
         github_calls.inc();
         let _timer = get_team_members_histogram.start_timer();
-        rt
-            .block_on(
-                team_actions
-                    .iter_members()
-                    .map(|user| (GitHubID::new(user.id), GitHubName::new(user.login)))
-                    .collect(),
-            )
-            .map_err(|e| {
-                get_team_members_failures.inc();
-                e
-            })
-            .expect("Failed to fetch team members")
-            .into_iter()
-            .collect()
+        rt.block_on(
+            team_actions
+                .iter_members()
+                .map(|user| (GitHubID::new(user.id), GitHubName::new(user.login)))
+                .collect(),
+        )
+        .map_err(|e| {
+            get_team_members_failures.inc();
+            e
+        })
+        .expect("Failed to fetch team members")
+        .into_iter()
+        .collect()
     };
     current_team_member_gauge.set(current_members.len().try_into().unwrap());
 
@@ -94,20 +111,19 @@ pub fn sync_team(
     let pending_invites: Vec<GitHubName> = {
         github_calls.inc();
         let _timer = get_invitations_histogram.start_timer();
-        rt
-            .block_on(
-                github
-                    .org(org)
-                    .membership()
-                    .invitations()
-                    .filter_map(|invite| Some(GitHubName::new(invite.login?)))
-                    .collect(),
-            )
-            .map_err(|e| {
-                get_invitations_failures.inc();
-                e
-            })
-            .expect("failed to list existing invitations")
+        rt.block_on(
+            github
+                .org(org)
+                .membership()
+                .invitations()
+                .filter_map(|invite| Some(GitHubName::new(invite.login?)))
+                .collect(),
+        )
+        .map_err(|e| {
+            get_invitations_failures.inc();
+            e
+        })
+        .expect("failed to list existing invitations")
     };
     current_invitations_gauge.set(pending_invites.len().try_into().unwrap());
 
@@ -116,20 +132,32 @@ pub fn sync_team(
     );
 
     let diff = maintainer_team_diff(maintainers, &current_members);
-    let mut noops = 0;
-    let mut additions = 0;
-    let mut removals = 0;
-    let mut errors = 0;
+
+    let limit_metric = register_int_gauge!(
+        "team_sync_change_limit",
+        "Total number of additions and changed allowed in a single run"
+    )
+    .unwrap();
+    if let Some(limit) = limit {
+        limit_metric.set(limit.try_into().unwrap());
+    }
+
+    let limit: Option<i64> = limit.map(|lim| lim.try_into().unwrap());
+
+    let noops =
+        register_int_counter!("team_sync_noops", "Total count of noop team sync actions").unwrap();
+    let additions = register_int_counter!("team_sync_additions", "Total team additions").unwrap();
+    let removals = register_int_counter!("team_sync_removals", "Total team removals").unwrap();
+    let errors = register_int_counter!("team_sync_errors", "Total team errors").unwrap();
     for (github_id, action) in diff {
         if let Some(limit) = limit {
-            if (additions + removals) >= limit {
+            if (additions.get() + removals.get()) >= limit {
                 info!(logger, "Hit maximum change limit";
-                      "changed" => %(additions + removals),
-                      "limit" => %format!("{:?}", limit),
-                      "additions" => %additions,
-                      "removals" => %removals,
-                      "noops" => %noops,
-                      "errors" => %errors,
+                      "changed" => %(additions.get() + removals.get()),
+                      "additions" => %additions.get(),
+                      "removals" => %removals.get(),
+                      "noops" => %noops.get(),
+                      "errors" => %errors.get(),
                 );
                 return Ok(());
             }
@@ -137,43 +165,40 @@ pub fn sync_team(
         match action {
             TeamAction::Add(github_name, handle) => {
                 if pending_invites.contains(&github_name) {
-                    noops += 1;
+                    noops.inc();
                     debug!(logger, "User already has a pending invitation";
                            "nixpkgs-handle" => %handle,
                            "github-name" => %github_name,
                            "github-id" => %github_id,
-                           "changed" => %(additions + removals),
-                           "limit" => %format!("{:?}", limit),
-                           "additions" => %additions,
-                           "removals" => %removals,
-                           "noops" => %noops,
-                           "errors" => %errors,
+                           "changed" => %(additions.get() + removals.get()),
+                           "additions" => %additions.get(),
+                           "removals" => %removals.get(),
+                           "noops" => %noops.get(),
+                           "errors" => %errors.get(),
                     );
                 } else {
-                    additions += 1;
+                    additions.inc();
                     if dry_run {
                         info!(logger, "Would add user to the team";
                               "nixpkgs-handle" => %handle,
                               "github-name" => %github_name,
                               "github-id" => %github_id,
-                              "changed" => %(additions + removals),
-                              "limit" => %format!("{:?}", limit),
-                              "additions" => %additions,
-                              "removals" => %removals,
-                              "noops" => %noops,
-                              "errors" => %errors,
+                              "changed" => %(additions.get() + removals.get()),
+                              "additions" => %additions.get(),
+                              "removals" => %removals.get(),
+                              "noops" => %noops.get(),
+                              "errors" => %errors.get(),
                         );
                     } else {
                         info!(logger, "Adding user to the team";
                               "nixpkgs-handle" => %handle,
                               "github-name" => %github_name,
                               "github-id" => %github_id,
-                              "changed" => %(additions + removals),
-                              "limit" => %format!("{:?}", limit),
-                              "additions" => %additions,
-                              "removals" => %removals,
-                              "noops" => %noops,
-                              "errors" => %errors,
+                              "changed" => %(additions.get() + removals.get()),
+                              "additions" => %additions.get(),
+                              "removals" => %removals.get(),
+                              "noops" => %noops.get(),
+                              "errors" => %errors.get(),
                         );
 
                         // verify the ID and name still match
@@ -188,17 +213,16 @@ pub fn sync_team(
                                     )) {
                                         Ok(_) => (),
                                         Err(e) => {
-                                            errors += 1;
+                                            errors.inc();
                                             warn!(logger, "Failed to add a user to the team, not decrementing additions as it may have succeeded: {:#?}", e;
                                                   "nixpkgs-handle" => %handle,
                                                   "github-name" => %github_name,
                                                   "github-id" => %github_id,
-                                                  "changed" => %(additions + removals),
-                                                  "limit" => %format!("{:?}", limit),
-                                                  "additions" => %additions,
-                                                  "removals" => %removals,
-                                                  "noops" => %noops,
-                                                  "errors" => %errors,
+                                                  "changed" => %(additions.get() + removals.get()),
+                                                  "additions" => %additions.get(),
+                                                  "removals" => %removals.get(),
+                                                  "noops" => %noops.get(),
+                                                  "errors" => %errors.get(),
                                             );
                                         }
                                     }
@@ -210,18 +234,16 @@ pub fn sync_team(
                                 }
                             }
                             Err(e) => {
-                                additions -= 1;
-                                errors += 1;
-                                warn!(logger, "Failed to fetch user by name, decrementing additions, incrementing noops. error: {:#?}", e;
+                                errors.inc();
+                                warn!(logger, "Failed to fetch user by name, incrementing noops. error: {:#?}", e;
                                       "nixpkgs-handle" => %handle,
                                       "github-name" => %github_name,
                                       "github-id" => %github_id,
-                                      "changed" => %(additions + removals),
-                                      "limit" => %format!("{:?}", limit),
-                                      "additions" => %additions,
-                                      "removals" => %removals,
-                                      "noops" => %noops,
-                                      "errors" => %errors,
+                                      "changed" => %(additions.get() + removals.get()),
+                                      "additions" => %additions.get(),
+                                      "removals" => %removals.get(),
+                                      "noops" => %noops.get(),
+                                      "errors" => %errors.get(),
                                 );
                             }
                         }
@@ -229,38 +251,35 @@ pub fn sync_team(
                 }
             }
             TeamAction::Keep(handle) => {
-                noops += 1;
+                noops.inc();
                 trace!(logger, "Keeping user on the team";
                        "nixpkgs-handle" => %handle,
                        "github-id" => %github_id,
-                       "changed" => %(additions + removals),
-                       "limit" => %format!("{:?}", limit),
-                       "additions" => %additions,
-                       "removals" => %removals,
-                       "noops" => %noops,
+                       "changed" => %(additions.get() + removals.get()),
+                       "additions" => %additions.get(),
+                       "removals" => %removals.get(),
+                       "noops" => %noops.get(),
                 );
             }
             TeamAction::Remove(handle) => {
-                removals += 1;
+                removals.inc();
                 if dry_run {
                     info!(logger, "Would remove user from the team";
                           "nixpkgs-handle" => %handle,
                           "github-id" => %github_id,
-                          "changed" => %(additions + removals),
-                          "limit" => %format!("{:?}", limit),
-                          "additions" => %additions,
-                          "removals" => %removals,
-                          "noops" => %noops,
+                          "changed" => %(additions.get() + removals.get()),
+                          "additions" => %additions.get(),
+                          "removals" => %removals.get(),
+                          "noops" => %noops.get(),
                     );
                 } else {
                     info!(logger, "Removing user from the team";
                           "nixpkgs-handle" => %handle,
                           "github-id" => %github_id,
-                          "changed" => %(additions + removals),
-                          "limit" => %format!("{:?}", limit),
-                          "additions" => %additions,
-                          "removals" => %removals,
-                          "noops" => %noops,
+                          "changed" => %(additions.get() + removals.get()),
+                          "additions" => %additions.get(),
+                          "removals" => %removals.get(),
+                          "noops" => %noops.get(),
                     );
                 }
             }
