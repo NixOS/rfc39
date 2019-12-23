@@ -26,13 +26,16 @@ mod maintainers;
 use maintainers::MaintainerList;
 mod filemunge;
 mod maintainerhistory;
+mod metrics;
 mod nix;
 mod op_backfill;
 mod op_blame_author;
 mod op_check_handles;
 mod op_sync_team;
 use hubcaps::{Credentials, Github, InstallationTokenGenerator, JWTCredentials};
+use prometheus::Encoder;
 use std::thread;
+use std::time;
 
 /// Github Authentication information for the GitHub app.
 /// When creating the application, the only permission it needs
@@ -142,11 +145,21 @@ fn main() {
 
     let (logger, _scopes) = rfc39::default_logger();
 
-    let inputs = Options::from_args();
+    let mut inputs = Options::from_args();
 
     let dump_metrics = inputs.dump_metrics;
+    let metrics_delay = inputs.metrics_delay;
+    let metrics_handle = inputs.metrics_bind.take().map(|bind| {
+        let bind = bind.parse().unwrap();
+        let logger = logger.new(o!("thread" => "metrics"));
+        thread::spawn(move || {
+            info!(logger, "Listening on {:?}", bind);
 
-    let handle = {
+            metrics::serve(&bind)
+        })
+    });
+
+    let op_handle = {
         let logger = logger.new(o!());
         thread::spawn(move || {
             execute_ops(logger, inputs).map(|ok| {
@@ -156,15 +169,20 @@ fn main() {
         })
     };
 
-    let thread_result: Result<Result<(), ExitError>, _> = handle.join().map_err(|thread_err| {
+    let thread_result: Result<Result<(), ExitError>, _> = op_handle.join().map_err(|thread_err| {
         warn!(logger, "Op-handling child panicked: {:#?}", thread_err);
         op_failed_counter.inc();
         op_panic_counter.inc();
         thread_err
     });
 
+    if let Some(_metrics_handle) = metrics_handle {
+        thread::sleep(time::Duration::from_millis(1000 * metrics_delay));
+        // we just let the metrics thread die at the end.
+        // Never joined.
+    }
+
     if dump_metrics {
-        use prometheus::Encoder;
         let mut buffer = Vec::<u8>::new();
         prometheus::default_registry();
         prometheus::TextEncoder::new()

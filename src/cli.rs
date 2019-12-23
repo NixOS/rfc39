@@ -7,6 +7,17 @@ pub struct Options {
     #[structopt(long = "dump-metrics")]
     pub dump_metrics: bool,
 
+    /// Address and port information for binding the metrics server
+    #[structopt(long = "metrics-addr")]
+    pub metrics_bind: Option<String>,
+
+    /// How long in seconds to keep the server up after operation is
+    /// completed. Recommended to be 4x the scrape frequency.
+    /// Only takes effect if metrics-addr is specified.
+    /// Default: 240 seconds.
+    #[structopt(long = "metrics-delay", default_value = "240")]
+    pub metrics_delay: u64,
+
     /// Maintainer list
     #[structopt(short = "m", long = "maintainers", parse(from_os_str))]
     pub maintainers: PathBuf,
