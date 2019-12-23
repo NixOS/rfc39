@@ -1,7 +1,7 @@
 use crate::maintainers::{GitHubID, GitHubName, Handle, MaintainerList};
 use futures::stream::Stream;
-use hubcaps::teams::{Team, TeamMemberOptions, TeamMemberRole};
-use hubcaps::users::User;
+use hubcaps::teams::{TeamMemberOptions, TeamMemberRole};
+
 use hubcaps::Github;
 use std::collections::HashMap;
 use tokio::runtime::Runtime;

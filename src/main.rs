@@ -27,7 +27,7 @@ mod op_blame_author;
 mod op_check_handles;
 mod op_sync_team;
 use hubcaps::{Credentials, Github, InstallationTokenGenerator, JWTCredentials};
-use std::env;
+
 
 // NOTE: DO NOT MAKE "Debug"! This will leak secrets
 #[derive(Deserialize)]
@@ -101,7 +101,7 @@ struct ListTeamParams {
 }
 
 fn main() {
-    let (logger, scopes) = rfc39::default_logger();
+    let (logger, _scopes) = rfc39::default_logger();
 
     let inputs = Options::from_args();
 

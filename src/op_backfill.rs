@@ -22,7 +22,7 @@ pub fn backfill_ids(
 
     let missing_ids = maintainers
         .into_iter()
-        .filter(|(handle, maintainer)| {
+        .filter(|(_handle, maintainer)| {
             maintainer.github.is_some() && maintainer.github_id.is_none()
         })
         .map(|(handle, maintainer)| {
@@ -65,7 +65,7 @@ pub fn backfill_ids(
                 }
             }
         })
-        .filter_map(|(github_name, maintainer, github_id, handle)| {
+        .filter_map(|(github_name, _maintainer, github_id, handle)| {
             let confidence =
                 history.confidence_for_user(&github, &handle, &github_name, &github_id)?;
 
