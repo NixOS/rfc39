@@ -1,9 +1,10 @@
 //! Somewhat half-hearted attempt at checking all the handles and IDs,
 //! but it doesn't really work right now.
 
+use crate::cli::ExitError;
 use crate::maintainers::MaintainerList;
 
-pub fn check_handles(logger: slog::Logger, maintainers: MaintainerList) {
+pub fn check_handles(logger: slog::Logger, maintainers: MaintainerList) -> Result<(), ExitError> {
     for (handle, info) in maintainers {
         match (info.github, info.github_id) {
             (Some(name), Some(id)) => {
@@ -28,4 +29,6 @@ pub fn check_handles(logger: slog::Logger, maintainers: MaintainerList) {
             }
         }
     }
+
+    Ok(())
 }
