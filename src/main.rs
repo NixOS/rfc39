@@ -63,14 +63,15 @@ fn load_maintainer_file(logger: slog::Logger, src: &Path) -> Result<MaintainerLi
     Ok(MaintainerList::load(logger.clone(), &maintainers_file)?)
 }
 
-fn execute_ops(logger: slog::Logger, inputs: Options) {
+fn execute_ops(logger: slog::Logger, inputs: Options) -> Result<(), ExitError> {
     // Note: I wanted these in a lazy_static!, but that meant metrics
     // which would report a 0 would never get reported at all, since
     // they aren't accessed.... and lazy_static! is lazy.
     let maintainer_nix_load_failure_counter = register_int_counter!(
         "maintainer_nix_load_failure",
         "Failures to load maintainers.nix"
-    ).unwrap();
+    )
+    .unwrap();
 
     let maintainers = load_maintainer_file(logger.new(o!()), &inputs.maintainers)
         .map_err(|d| {
@@ -131,13 +132,18 @@ fn execute_ops(logger: slog::Logger, inputs: Options) {
 }
 
 fn main() {
+    let op_failed_counter = register_int_counter!("op_failure", "Execution failed").unwrap();
+
     let (logger, _scopes) = rfc39::default_logger();
 
     let inputs = Options::from_args();
 
     let dump_metrics = inputs.dump_metrics;
 
-    execute_ops(logger, inputs);
+    let result = execute_ops(logger, inputs).map_err(|e| {
+        op_failed_counter.inc();
+        e
+    });
 
     if dump_metrics {
         use prometheus::Encoder;
@@ -148,4 +154,6 @@ fn main() {
             .unwrap();
         println!("metrics:\n {}", String::from_utf8(buffer).unwrap());
     }
+
+    result.unwrap();
 }
