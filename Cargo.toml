@@ -25,5 +25,8 @@ tokio = "0.1.22"
 slog-scope = "4.1.2"
 slog-stdlog = "4.0.0"
 
-[patch.crates-io]
-hubcaps = { git = "https://github.com/grahamc/hubcaps.git", branch = "invitations", rev="2a3d989999fea815ef9ad004d93686e923020adf" }
+[patch.crates-io.hubcaps]
+git = "https://github.com/grahamc/hubcaps.git"
+# for documentation:
+#   branch = "invitations",
+rev="2a3d989999fea815ef9ad004d93686e923020adf"
