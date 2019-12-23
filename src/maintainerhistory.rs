@@ -311,7 +311,7 @@ fn git_blame_list(logger: slog::Logger, file: &Path) -> Result<Vec<String>, ()> 
         .collect())
 }
 
-fn load_old_data<'a>(
+fn load_old_data(
     logger: slog::Logger,
     blame: &str,
     nix: &str,
