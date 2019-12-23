@@ -89,16 +89,6 @@ impl MaintainerList {
             maintainers: nix::nix_instantiate_file_to_struct(logger, path)?,
         })
     }
-
-    #[cfg(test)]
-    pub fn get<'a, 'b>(&'a self, handle: &'b Handle) -> Option<&'a Information> {
-        self.maintainers.get(handle)
-    }
-
-    #[cfg(test)]
-    pub fn iter<'a>(&'a self) -> std::collections::hash_map::Iter<'a, Handle, Information> {
-        self.maintainers.iter()
-    }
 }
 
 impl IntoIterator for MaintainerList {
