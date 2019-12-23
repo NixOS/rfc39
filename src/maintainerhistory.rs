@@ -170,7 +170,7 @@ impl MaintainerHistory {
         github_id: GitHubID,
     ) -> Option<Confidence> {
         if let Some(hash) = self.commit_for_user(&user) {
-            check_user_hash(&self.logger, &github, &user, &github_name, &github_id, hash)
+            check_user_hash(&self.logger, &github, &user, &github_name, github_id, hash)
         } else {
             warn!(self.logger, "Did not find a suitable commit hash for user";
                   "user" => %user,
@@ -194,7 +194,7 @@ fn check_user_hash(
     github: &Github,
     user: &Handle,
     github_name: &GitHubName,
-    github_id: &GitHubID,
+    github_id: GitHubID,
     commit_hash: &str,
 ) -> Option<Confidence> {
     let mut rt = Runtime::new().unwrap();
@@ -206,7 +206,7 @@ fn check_user_hash(
     match commit {
         Ok(commit) => match (
             (GitHubName::new(commit.author.login.clone()) == *github_name),
-            (GitHubID::new(commit.author.id) == *github_id),
+            (GitHubID::new(commit.author.id) == github_id),
             format!("{}", github_name).as_str(),
             commit.author.login.as_str(),
             commit_hash,
