@@ -162,15 +162,17 @@ pub fn sync_team(
     let removals = register_int_counter!("team_sync_removals", "Total team removals").unwrap();
     let errors = register_int_counter!("team_sync_errors", "Total team errors").unwrap();
     for (github_id, action) in diff {
+        let logger = logger.new(o!(
+            "github-id" => format!("{}", github_id),
+            "changed" => additions.get() + removals.get(),
+            "additions" => additions.get(),
+            "removals" => removals.get(),
+            "noops" => noops.get(),
+            "errors" => errors.get(),
+        ));
         if let Some(limit) = limit {
             if (additions.get() + removals.get()) >= limit {
-                info!(logger, "Hit maximum change limit";
-                      "changed" => %(additions.get() + removals.get()),
-                      "additions" => %additions.get(),
-                      "removals" => %removals.get(),
-                      "noops" => %noops.get(),
-                      "errors" => %errors.get(),
-                );
+                info!(logger, "Hit maximum change limit");
                 return Ok(());
             }
         }
@@ -181,12 +183,6 @@ pub fn sync_team(
                     debug!(logger, "User already has a pending invitation";
                            "nixpkgs-handle" => %handle,
                            "github-name" => %github_name,
-                           "github-id" => %github_id,
-                           "changed" => %(additions.get() + removals.get()),
-                           "additions" => %additions.get(),
-                           "removals" => %removals.get(),
-                           "noops" => %noops.get(),
-                           "errors" => %errors.get(),
                     );
                 } else {
                     additions.inc();
@@ -194,23 +190,11 @@ pub fn sync_team(
                         info!(logger, "Would add user to the team";
                               "nixpkgs-handle" => %handle,
                               "github-name" => %github_name,
-                              "github-id" => %github_id,
-                              "changed" => %(additions.get() + removals.get()),
-                              "additions" => %additions.get(),
-                              "removals" => %removals.get(),
-                              "noops" => %noops.get(),
-                              "errors" => %errors.get(),
                         );
                     } else {
                         info!(logger, "Adding user to the team";
                               "nixpkgs-handle" => %handle,
                               "github-name" => %github_name,
-                              "github-id" => %github_id,
-                              "changed" => %(additions.get() + removals.get()),
-                              "additions" => %additions.get(),
-                              "removals" => %removals.get(),
-                              "noops" => %noops.get(),
-                              "errors" => %errors.get(),
                         );
 
                         // verify the ID and name still match
@@ -241,12 +225,6 @@ pub fn sync_team(
                                             warn!(logger, "Failed to add a user to the team, not decrementing additions as it may have succeeded: {:#?}", e;
                                                   "nixpkgs-handle" => %handle,
                                                   "github-name" => %github_name,
-                                                  "github-id" => %github_id,
-                                                  "changed" => %(additions.get() + removals.get()),
-                                                  "additions" => %additions.get(),
-                                                  "removals" => %removals.get(),
-                                                  "noops" => %noops.get(),
-                                                  "errors" => %errors.get(),
                                             );
                                         }
                                     }
@@ -254,7 +232,6 @@ pub fn sync_team(
                                     github_user_not_added_username_id_mismatch.inc();
                                     warn!(logger, "Recorded username mismatch, not adding";
                                           "nixpkgs-handle" => %handle,
-                                          "github-id" => %github_id,
                                     );
                                 }
                             }
@@ -263,12 +240,6 @@ pub fn sync_team(
                                 warn!(logger, "Failed to fetch user by name, incrementing noops. error: {:#?}", e;
                                       "nixpkgs-handle" => %handle,
                                       "github-name" => %github_name,
-                                      "github-id" => %github_id,
-                                      "changed" => %(additions.get() + removals.get()),
-                                      "additions" => %additions.get(),
-                                      "removals" => %removals.get(),
-                                      "noops" => %noops.get(),
-                                      "errors" => %errors.get(),
                                 );
                             }
                         }
@@ -279,11 +250,6 @@ pub fn sync_team(
                 noops.inc();
                 trace!(logger, "Keeping user on the team";
                        "nixpkgs-handle" => %handle,
-                       "github-id" => %github_id,
-                       "changed" => %(additions.get() + removals.get()),
-                       "additions" => %additions.get(),
-                       "removals" => %removals.get(),
-                       "noops" => %noops.get(),
                 );
             }
             TeamAction::Remove(handle) => {
@@ -291,20 +257,10 @@ pub fn sync_team(
                 if dry_run {
                     info!(logger, "Would remove user from the team";
                           "nixpkgs-handle" => %handle,
-                          "github-id" => %github_id,
-                          "changed" => %(additions.get() + removals.get()),
-                          "additions" => %additions.get(),
-                          "removals" => %removals.get(),
-                          "noops" => %noops.get(),
                     );
                 } else {
                     info!(logger, "Removing user from the team";
                           "nixpkgs-handle" => %handle,
-                          "github-id" => %github_id,
-                          "changed" => %(additions.get() + removals.get()),
-                          "additions" => %additions.get(),
-                          "removals" => %removals.get(),
-                          "noops" => %noops.get(),
                     );
                 }
             }
