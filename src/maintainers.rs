@@ -19,6 +19,7 @@ impl std::fmt::Display for Handle {
     }
 }
 impl Handle {
+    #[cfg(test)]
     pub fn new<T>(name: T) -> Handle
     where
         T: Into<String>,
@@ -26,7 +27,6 @@ impl Handle {
         Handle(name.into())
     }
 }
-
 #[derive(Debug, Eq, Clone, Deserialize)]
 pub struct GitHubName(String);
 impl std::fmt::Display for GitHubName {
@@ -76,6 +76,7 @@ pub struct Information {
 }
 
 impl MaintainerList {
+    #[cfg(test)]
     pub fn new(maintainers: HashMap<Handle, Information>) -> MaintainerList {
         MaintainerList { maintainers }
     }
@@ -89,10 +90,12 @@ impl MaintainerList {
         })
     }
 
+    #[cfg(test)]
     pub fn get<'a, 'b>(&'a self, handle: &'b Handle) -> Option<&'a Information> {
         self.maintainers.get(handle)
     }
 
+    #[cfg(test)]
     pub fn iter<'a>(&'a self) -> std::collections::hash_map::Iter<'a, Handle, Information> {
         self.maintainers.iter()
     }
