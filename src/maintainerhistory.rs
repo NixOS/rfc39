@@ -167,7 +167,7 @@ impl MaintainerHistory {
         github: &Github,
         user: &Handle,
         github_name: &GitHubName,
-        github_id: &GitHubID,
+        github_id: GitHubID,
     ) -> Option<Confidence> {
         if let Some(hash) = self.commit_for_user(&user) {
             check_user_hash(&self.logger, &github, &user, &github_name, &github_id, hash)

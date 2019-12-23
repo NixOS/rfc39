@@ -67,7 +67,7 @@ pub fn backfill_ids(
         })
         .filter_map(|(github_name, _maintainer, github_id, handle)| {
             let confidence =
-                history.confidence_for_user(&github, &handle, &github_name, &github_id)?;
+                history.confidence_for_user(&github, &handle, &github_name, github_id)?;
 
             if confidence == Confidence::Total {
                 Some((github_name, github_id))

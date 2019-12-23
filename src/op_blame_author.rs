@@ -17,7 +17,7 @@ pub fn report(
     for (user, information) in maintainers {
         if let Some(github_name) = information.github {
             if let Some(github_id) = information.github_id {
-                history.confidence_for_user(&github, &user, &github_name, &github_id);
+                history.confidence_for_user(&github, &user, &github_name, github_id);
             }
         }
     }
