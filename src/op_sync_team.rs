@@ -132,13 +132,28 @@ pub fn sync_team(
                         match rt.block_on(github.users().get(&format!("{}", github_name))) {
                             Ok(user) => {
                                 if GitHubID::new(user.id) == github_id {
-                                    rt.block_on(team_actions.add_user(
+                                    match rt.block_on(team_actions.add_user(
                                         &format!("{}", github_name),
                                         TeamMemberOptions {
                                             role: TeamMemberRole::Member,
                                         },
-                                    ))
-                                        .unwrap();
+                                    )) {
+                                        Ok(_) => (),
+                                        Err(e) => {
+                                            errors += 1;
+                                            warn!(logger, "Failed to add a user to the team, not decrementing additions as it may have succeeded: {:#?}", e;
+                                                  "nixpkgs-handle" => %handle,
+                                                  "github-name" => %github_name,
+                                                  "github-id" => %github_id,
+                                                  "changed" => %(additions + removals),
+                                                  "limit" => %format!("{:?}", limit),
+                                                  "additions" => %additions,
+                                                  "removals" => %removals,
+                                                  "noops" => %noops,
+                                                  "errors" => %errors,
+                                            );
+                                        }
+                                    }
                                 } else {
                                     warn!(logger, "Recorded username mismatch, not adding";
                                           "nixpkgs-handle" => %handle,
