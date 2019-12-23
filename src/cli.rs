@@ -61,3 +61,19 @@ pub struct SyncTeamParams {
 pub struct ListTeamParams {
     pub organization: String,
 }
+
+#[derive(Debug)]
+pub enum ExitError {
+    Io(std::io::Error),
+    Serde(serde_json::error::Error),
+}
+impl From<std::io::Error> for ExitError {
+    fn from(e: std::io::Error) -> Self {
+        Self::Io(e)
+    }
+}
+impl From<serde_json::error::Error> for ExitError {
+    fn from(e: serde_json::error::Error) -> Self {
+        Self::Serde(e)
+    }
+}

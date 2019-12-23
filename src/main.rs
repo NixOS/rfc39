@@ -18,7 +18,7 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 mod cli;
-use cli::{ExecMode, Options};
+use cli::{ExecMode, ExitError, Options};
 mod maintainers;
 use maintainers::MaintainerList;
 mod filemunge;
@@ -49,20 +49,15 @@ pub struct GitHubAuth {
     pub installation_id: u64,
 }
 
-lazy_static! {}
-
-fn load_maintainer_file(
-    logger: slog::Logger,
-    src: &Path,
-) -> Result<MaintainerList, serde_json::error::Error> {
-    let maintainers_file = src.canonicalize().unwrap();
+fn load_maintainer_file(logger: slog::Logger, src: &Path) -> Result<MaintainerList, ExitError> {
+    let maintainers_file = src.canonicalize()?;
 
     info!(logger, "Loading maintainer information";
           "from" => src.display(),
           "absolute" => maintainers_file.display()
     );
 
-    MaintainerList::load(logger.clone(), &maintainers_file)
+    Ok(MaintainerList::load(logger.clone(), &maintainers_file)?)
 }
 
 fn main() {
