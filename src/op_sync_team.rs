@@ -178,24 +178,19 @@ pub fn sync_team(
         }
         match action {
             TeamAction::Add(github_name, handle) => {
+                let logger = logger.new(o!(
+                    "nixpkgs-handle" => format!("{}", handle),
+                    "github-name" => format!("{}", github_name),
+                ));
                 if pending_invites.contains(&github_name) {
                     noops.inc();
-                    debug!(logger, "User already has a pending invitation";
-                           "nixpkgs-handle" => %handle,
-                           "github-name" => %github_name,
-                    );
+                    debug!(logger, "User already has a pending invitation");
                 } else {
                     additions.inc();
                     if dry_run {
-                        info!(logger, "Would add user to the team";
-                              "nixpkgs-handle" => %handle,
-                              "github-name" => %github_name,
-                        );
+                        info!(logger, "Would add user to the team");
                     } else {
-                        info!(logger, "Adding user to the team";
-                              "nixpkgs-handle" => %handle,
-                              "github-name" => %github_name,
-                        );
+                        info!(logger, "Adding user to the team");
 
                         // verify the ID and name still match
                         let get_user = rt.block_on(
@@ -222,24 +217,18 @@ pub fn sync_team(
                                         Ok(_) => (),
                                         Err(e) => {
                                             errors.inc();
-                                            warn!(logger, "Failed to add a user to the team, not decrementing additions as it may have succeeded: {:#?}", e;
-                                                  "nixpkgs-handle" => %handle,
-                                                  "github-name" => %github_name,
+                                            warn!(logger, "Failed to add a user to the team, not decrementing additions as it may have succeeded: {:#?}", e
                                             );
                                         }
                                     }
                                 } else {
                                     github_user_not_added_username_id_mismatch.inc();
-                                    warn!(logger, "Recorded username mismatch, not adding";
-                                          "nixpkgs-handle" => %handle,
-                                    );
+                                    warn!(logger, "Recorded username mismatch, not adding");
                                 }
                             }
                             Err(e) => {
                                 errors.inc();
-                                warn!(logger, "Failed to fetch user by name, incrementing noops. error: {:#?}", e;
-                                      "nixpkgs-handle" => %handle,
-                                      "github-name" => %github_name,
+                                warn!(logger, "Failed to fetch user by name, incrementing noops. error: {:#?}", e
                                 );
                             }
                         }
@@ -247,21 +236,22 @@ pub fn sync_team(
                 }
             }
             TeamAction::Keep(handle) => {
+                let logger = logger.new(o!(
+                    "nixpkgs-handle" => format!("{}", handle),
+                ));
+
                 noops.inc();
-                trace!(logger, "Keeping user on the team";
-                       "nixpkgs-handle" => %handle,
-                );
+                trace!(logger, "Keeping user on the team");
             }
             TeamAction::Remove(handle) => {
+                let logger = logger.new(o!(
+                    "nixpkgs-handle" => format!("{}", handle),                ));
+
                 removals.inc();
                 if dry_run {
-                    info!(logger, "Would remove user from the team";
-                          "nixpkgs-handle" => %handle,
-                    );
+                    info!(logger, "Would remove user from the team");
                 } else {
-                    info!(logger, "Removing user from the team";
-                          "nixpkgs-handle" => %handle,
-                    );
+                    info!(logger, "Removing user from the team");
                 }
             }
         }
