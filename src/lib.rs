@@ -1,9 +1,9 @@
 use slog;
+use slog_scope;
+use slog_stdlog;
 use sloggers::terminal::{Destination, TerminalLoggerBuilder};
 use sloggers::types::Severity;
 use sloggers::Build;
-use slog_scope;
-use slog_stdlog;
 
 pub fn default_logger() -> (slog::Logger, slog_scope::GlobalLoggerGuard) {
     let mut builder = TerminalLoggerBuilder::new();

@@ -160,7 +160,7 @@ pub fn sync_team(
                                           "github-id" => %github_id,
                                     );
                                 }
-                            },
+                            }
                             Err(e) => {
                                 additions -= 1;
                                 errors += 1;
