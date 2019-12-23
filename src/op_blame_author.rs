@@ -1,3 +1,4 @@
+use crate::cli::ExitError;
 use crate::maintainerhistory::MaintainerHistory;
 use crate::maintainers::MaintainerList;
 use hubcaps::Github;
@@ -8,7 +9,7 @@ pub fn report(
     github: Github,
     maintainer_file: &Path,
     maintainers: MaintainerList,
-) {
+) -> Result<(), ExitError> {
     info!(logger, "Verifying our maintainer list GitHub accounts match the author of the commit which added the maintainer entry";
           "commit" => "");
 
@@ -21,4 +22,6 @@ pub fn report(
             }
         }
     }
+
+    Ok(())
 }
