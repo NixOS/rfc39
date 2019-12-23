@@ -8,7 +8,13 @@ use std::collections::HashMap;
 use std::convert::TryInto;
 use tokio::runtime::Runtime;
 
-lazy_static! {}
+lazy_static! {
+    static ref GITHUB_CALLS: IntCounter = register_int_counter!(
+        "github_call_count",
+        "Code-level calls to GitHub API methods (not a count of actual calls made to GitHub.)"
+    )
+    .unwrap();
+}
 
 pub fn list_teams(github: Github, org: &str) -> Result<(), ExitError> {
     let mut rt = Runtime::new().unwrap();
@@ -31,11 +37,8 @@ pub fn sync_team(
     dry_run: bool,
     limit: Option<u64>,
 ) -> Result<(), ExitError> {
-    let github_calls: IntCounter = register_int_counter!(
-        "github_call_count",
-        "Code-level calls to GitHub API methods (not a count of actual calls made to GitHub.)"
-    )
-    .unwrap();
+    // initialize the counters :(
+    GITHUB_CALLS.get();
 
     let get_team_histogram: Histogram =
         register_histogram!("github_get_team", "Time to fetch a team").unwrap();
@@ -87,19 +90,15 @@ pub fn sync_team(
     )
     .unwrap();
 
-    let mut rt = Runtime::new().unwrap();
+    let mut rt = TrackedReactor {
+        rt: Runtime::new().unwrap(),
+    };
 
     let team_actions = github.org(org).teams().get(team_id);
-    let team = {
-        github_calls.inc();
-        let _timer = get_team_histogram.start_timer();
-        rt.block_on(team_actions.get())
-            .map_err(|e| {
-                get_team_failures.inc();
-                e
-            })
-            .expect("Failed to fetch team")
-    };
+    let team = rt
+        .block_on(team_actions.get(), &get_team_histogram, &get_team_failures)
+        .expect("Failed to fetch team");
+
     info!(logger, "Syncing team";
           "team_name" => %team.name,
           "team_id" => %team.id,
@@ -110,43 +109,34 @@ pub fn sync_team(
           "team_id" => %team.id,
     );
 
-    let current_members: HashMap<GitHubID, GitHubName> = {
-        github_calls.inc();
-        let _timer = get_team_members_histogram.start_timer();
-        rt.block_on(
+    let current_members: HashMap<GitHubID, GitHubName> = rt
+        .block_on(
             team_actions
                 .iter_members()
                 .map(|user| (GitHubID::new(user.id), GitHubName::new(user.login)))
                 .collect(),
+            &get_team_members_histogram,
+            &get_team_members_failures,
         )
-        .map_err(|e| {
-            get_team_members_failures.inc();
-            e
-        })
         .expect("Failed to fetch team members")
         .into_iter()
-        .collect()
-    };
+        .collect();
+
     current_team_member_gauge.set(current_members.len().try_into().unwrap());
 
     debug!(logger, "Fetching existing invitations");
-    let pending_invites: Vec<GitHubName> = {
-        github_calls.inc();
-        let _timer = get_invitations_histogram.start_timer();
-        rt.block_on(
+    let pending_invites: Vec<GitHubName> = rt
+        .block_on(
             github
                 .org(org)
                 .membership()
                 .invitations()
                 .filter_map(|invite| Some(GitHubName::new(invite.login?)))
                 .collect(),
+            &get_invitations_histogram,
+            &get_invitations_failures,
         )
-        .map_err(|e| {
-            get_invitations_failures.inc();
-            e
-        })
-        .expect("failed to list existing invitations")
-    };
+        .expect("failed to list existing invitations");
     current_invitations_gauge.set(pending_invites.len().try_into().unwrap());
 
     debug!(logger, "Fetched invitations.";
@@ -224,29 +214,29 @@ pub fn sync_team(
                         );
 
                         // verify the ID and name still match
+                        let get_user = rt.block_on(
+                            github.users().get(&format!("{}", github_name)),
+                            &github_get_user_histogram,
+                            &github_get_user_failures,
+                        );
 
-                        let get_user = {
-                            github_calls.inc();
-                            let _timer = github_get_user_histogram.start_timer();
-                            rt.block_on(github.users().get(&format!("{}", github_name)))
-                        };
                         match get_user {
                             Ok(user) => {
                                 if GitHubID::new(user.id) == github_id {
-                                    let add_attempt = {
-                                        github_calls.inc();
-                                        let _timer = github_add_user_histogram.start_timer();
-                                        rt.block_on(team_actions.add_user(
+                                    let add_attempt = rt.block_on(
+                                        team_actions.add_user(
                                             &format!("{}", github_name),
                                             TeamMemberOptions {
                                                 role: TeamMemberRole::Member,
                                             },
-                                        ))
-                                    };
+                                        ),
+                                        &github_add_user_histogram,
+                                        &github_add_user_failures,
+                                    );
+
                                     match add_attempt {
                                         Ok(_) => (),
                                         Err(e) => {
-                                            github_add_user_failures.inc();
                                             errors.inc();
                                             warn!(logger, "Failed to add a user to the team, not decrementing additions as it may have succeeded: {:#?}", e;
                                                   "nixpkgs-handle" => %handle,
@@ -269,7 +259,6 @@ pub fn sync_team(
                                 }
                             }
                             Err(e) => {
-                                github_get_user_failures.inc();
                                 errors.inc();
                                 warn!(logger, "Failed to fetch user by name, incrementing noops. error: {:#?}", e;
                                       "nixpkgs-handle" => %handle,
@@ -323,6 +312,31 @@ pub fn sync_team(
     }
 
     Ok(())
+}
+
+struct TrackedReactor {
+    rt: Runtime,
+}
+
+impl TrackedReactor {
+    fn block_on<F, E, I>(
+        &mut self,
+        what: F,
+        histogram: &Histogram,
+        fails: &IntCounter,
+    ) -> Result<I, E>
+    where
+        F: Send + 'static + futures::future::Future<Item = I, Error = E>,
+        E: Send + 'static,
+        I: Send + 'static,
+    {
+        GITHUB_CALLS.inc();
+        let _timer = histogram.start_timer();
+        self.rt.block_on(what).map_err(|e| {
+            fails.inc();
+            e
+        })
+    }
 }
 
 #[derive(Debug, PartialEq)]
