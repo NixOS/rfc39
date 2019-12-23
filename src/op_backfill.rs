@@ -3,6 +3,7 @@
 
 #![warn(missing_docs)]
 
+use crate::cli::ExitError;
 use crate::filemunge;
 use crate::maintainerhistory::{Confidence, MaintainerHistory};
 use crate::maintainers::{GitHubID, GitHubName, MaintainerList};
@@ -17,7 +18,7 @@ pub fn backfill_ids(
     github: Github,
     file: &Path,
     maintainers: MaintainerList,
-) {
+) -> Result<(), ExitError> {
     let mut rt = Runtime::new().unwrap();
 
     let missing_ids = maintainers
@@ -84,6 +85,8 @@ pub fn backfill_ids(
 
     println!(
         "{}",
-        filemunge::backfill_file(found_ids, read_to_string(file).unwrap(),)
+        filemunge::backfill_file(found_ids, read_to_string(file)?,)
     );
+
+    Ok(())
 }
