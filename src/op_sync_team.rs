@@ -2,11 +2,12 @@ use crate::maintainers::{GitHubID, GitHubName, Handle, MaintainerList};
 use futures::stream::Stream;
 use hubcaps::teams::{TeamMemberOptions, TeamMemberRole};
 
+use crate::cli::ExitError;
 use hubcaps::Github;
 use std::collections::HashMap;
 use tokio::runtime::Runtime;
 
-pub fn list_teams(github: Github, org: &str) {
+pub fn list_teams(github: Github, org: &str) -> Result<(), ExitError> {
     let mut rt = Runtime::new().unwrap();
 
     rt.block_on(github.org(org).teams().iter().for_each(|team| {
@@ -14,6 +15,8 @@ pub fn list_teams(github: Github, org: &str) {
         Ok(())
     }))
     .expect("Failed to list teams");
+
+    Ok(())
 }
 
 pub fn sync_team(
