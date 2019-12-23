@@ -7,7 +7,7 @@ use sloggers::Build;
 
 pub fn default_logger() -> (slog::Logger, slog_scope::GlobalLoggerGuard) {
     let mut builder = TerminalLoggerBuilder::new();
-    builder.level(Severity::Debug);
+    builder.level(Severity::Info); // !!! Pass from the CLI
     builder.destination(Destination::Stderr);
     let drain = builder.build().unwrap();
     let scope_guard = slog_scope::set_global_logger(drain.clone());
