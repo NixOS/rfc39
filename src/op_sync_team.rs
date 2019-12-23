@@ -1,11 +1,15 @@
 use crate::maintainers::{GitHubID, GitHubName, Handle, MaintainerList};
 use futures::stream::Stream;
 use hubcaps::teams::{TeamMemberOptions, TeamMemberRole};
-
+use std::convert::TryInto;
 use crate::cli::ExitError;
 use hubcaps::Github;
 use std::collections::HashMap;
 use tokio::runtime::Runtime;
+use prometheus::{IntCounter, IntGauge, Histogram};
+
+lazy_static! {
+}
 
 pub fn list_teams(github: Github, org: &str) -> Result<(), ExitError> {
     let mut rt = Runtime::new().unwrap();
@@ -28,12 +32,34 @@ pub fn sync_team(
     dry_run: bool,
     limit: Option<u64>,
 ) -> Result<(), ExitError> {
+    let get_team_histogram: Histogram = register_histogram!("github_get_team", "Time to fetch a team").unwrap();
+    let get_team_failures: IntCounter = register_int_counter!("github_get_team_failures", "Number of failed attempts to get a team").unwrap();
+
+    let get_team_members_histogram: Histogram = register_histogram!("github_get_team_members", "Time to fetch team members").unwrap();
+    let get_team_members_failures: IntCounter = register_int_counter!("github_get_team_members_failures", "Number of failed attempts to get a team's members").unwrap();
+    let current_team_member_gauge: IntGauge = register_int_gauge!("github_team_member_count", "Fetched team members").unwrap();
+
+    let get_invitations_histogram: Histogram = register_histogram!("github_get_invitations", "Time to fetch invitations").unwrap();
+    let get_invitations_failures: IntCounter = register_int_counter!("github_get_team_invitation_failures", "Number of failed attempts to get a team's pending invitations").unwrap();
+    let current_invitations_gauge: IntGauge = register_int_gauge!("github_invitation_count", "Currently invited users").unwrap();
+
+    let github_calls: IntCounter = register_int_counter!("github_call_count", "Code-level calls to GitHub API methods (not a count of actual calls made to GitHub.)").unwrap();
+
+
     let mut rt = Runtime::new().unwrap();
 
     let team_actions = github.org(org).teams().get(team_id);
-    let team = rt
-        .block_on(team_actions.get())
-        .expect("Failed to fetch team");
+    let team = {
+        github_calls.inc();
+        let _timer = get_team_histogram.start_timer();
+        rt
+            .block_on(team_actions.get())
+            .map_err(|e| {
+                get_team_failures.inc();
+                e
+            })
+            .expect("Failed to fetch team")
+    };
     info!(logger, "Syncing team";
           "team_name" => %team.name,
           "team_id" => %team.id,
@@ -44,28 +70,47 @@ pub fn sync_team(
           "team_id" => %team.id,
     );
 
-    let current_members: HashMap<GitHubID, GitHubName> = rt
-        .block_on(
-            team_actions
-                .iter_members()
-                .map(|user| (GitHubID::new(user.id), GitHubName::new(user.login)))
-                .collect(),
-        )
-        .expect("Failed to fetch team members")
-        .into_iter()
-        .collect();
+    let current_members: HashMap<GitHubID, GitHubName> = {
+        github_calls.inc();
+        let _timer = get_team_members_histogram.start_timer();
+        rt
+            .block_on(
+                team_actions
+                    .iter_members()
+                    .map(|user| (GitHubID::new(user.id), GitHubName::new(user.login)))
+                    .collect(),
+            )
+            .map_err(|e| {
+                get_team_members_failures.inc();
+                e
+            })
+            .expect("Failed to fetch team members")
+            .into_iter()
+            .collect()
+    };
+    current_team_member_gauge.set(current_members.len().try_into().unwrap());
 
     debug!(logger, "Fetching existing invitations");
-    let pending_invites: Vec<GitHubName> = rt
-        .block_on(
-            github
-                .org(org)
-                .membership()
-                .invitations()
-                .filter_map(|invite| Some(GitHubName::new(invite.login?)))
-                .collect(),
-        )
-        .expect("failed to list existing invitations");
+    let pending_invites: Vec<GitHubName> = {
+        github_calls.inc();
+        let _timer = get_invitations_histogram.start_timer();
+        rt
+            .block_on(
+                github
+                    .org(org)
+                    .membership()
+                    .invitations()
+                    .filter_map(|invite| Some(GitHubName::new(invite.login?)))
+                    .collect(),
+            )
+            .map_err(|e| {
+                get_invitations_failures.inc();
+                e
+            })
+            .expect("failed to list existing invitations")
+    };
+    current_invitations_gauge.set(pending_invites.len().try_into().unwrap());
+
     debug!(logger, "Fetched invitations.";
            "pending_invitations" => pending_invites.len()
     );
