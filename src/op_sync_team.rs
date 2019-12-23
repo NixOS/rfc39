@@ -65,6 +65,28 @@ pub fn sync_team(
     let current_invitations_gauge: IntGauge =
         register_int_gauge!("github_invitation_count", "Currently invited users").unwrap();
 
+    let github_get_user_histogram: Histogram =
+        register_histogram!("github_get_user", "Time to fetch a GitHub user").unwrap();
+    let github_get_user_failures: IntCounter = register_int_counter!(
+        "github_get_user_failures",
+        "Number of failed attempts to get a user"
+    )
+    .unwrap();
+
+    let github_add_user_histogram: Histogram =
+        register_histogram!("github_add_user", "Time to fetch a GitHub user").unwrap();
+    let github_add_user_failures: IntCounter = register_int_counter!(
+        "github_add_user_failures",
+        "Number of failed attempts to add a user"
+    )
+    .unwrap();
+
+    let github_user_not_added_username_id_mismatch: IntGauge = register_int_gauge!(
+        "github_username_id_mismatch",
+        "Number of maintainers not added because of out of date usernames, due to a mismatched ID"
+    )
+    .unwrap();
+
     let mut rt = Runtime::new().unwrap();
 
     let team_actions = github.org(org).teams().get(team_id);
@@ -202,17 +224,29 @@ pub fn sync_team(
                         );
 
                         // verify the ID and name still match
-                        match rt.block_on(github.users().get(&format!("{}", github_name))) {
+
+                        let get_user = {
+                            github_calls.inc();
+                            let _timer = github_get_user_histogram.start_timer();
+                            rt.block_on(github.users().get(&format!("{}", github_name)))
+                        };
+                        match get_user {
                             Ok(user) => {
                                 if GitHubID::new(user.id) == github_id {
-                                    match rt.block_on(team_actions.add_user(
-                                        &format!("{}", github_name),
-                                        TeamMemberOptions {
-                                            role: TeamMemberRole::Member,
-                                        },
-                                    )) {
+                                    let add_attempt = {
+                                        github_calls.inc();
+                                        let _timer = github_add_user_histogram.start_timer();
+                                        rt.block_on(team_actions.add_user(
+                                            &format!("{}", github_name),
+                                            TeamMemberOptions {
+                                                role: TeamMemberRole::Member,
+                                            },
+                                        ))
+                                    };
+                                    match add_attempt {
                                         Ok(_) => (),
                                         Err(e) => {
+                                            github_add_user_failures.inc();
                                             errors.inc();
                                             warn!(logger, "Failed to add a user to the team, not decrementing additions as it may have succeeded: {:#?}", e;
                                                   "nixpkgs-handle" => %handle,
@@ -227,6 +261,7 @@ pub fn sync_team(
                                         }
                                     }
                                 } else {
+                                    github_user_not_added_username_id_mismatch.inc();
                                     warn!(logger, "Recorded username mismatch, not adding";
                                           "nixpkgs-handle" => %handle,
                                           "github-id" => %github_id,
@@ -234,6 +269,7 @@ pub fn sync_team(
                                 }
                             }
                             Err(e) => {
+                                github_get_user_failures.inc();
                                 errors.inc();
                                 warn!(logger, "Failed to fetch user by name, incrementing noops. error: {:#?}", e;
                                       "nixpkgs-handle" => %handle,
