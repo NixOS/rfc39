@@ -1,6 +1,11 @@
 { pkgs ? import <nixpkgs> {
   overlays = [
     (import (builtins.fetchTarball https://github.com/mozilla/nixpkgs-mozilla/archive/master.tar.gz))
+    (self: super: {
+      crate2nix = self.callPackage
+        (builtins.fetchTarball https://github.com/kolloch/crate2nix/tarball/master)
+        {};
+    })
   ];
 }
 }:
@@ -10,6 +15,7 @@ pkgs.mkShell {
     git
     openssl
     pkgconfig
+    crate2nix
   ];
 
   RUST_BACKTRACE = "1";
