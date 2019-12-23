@@ -28,14 +28,22 @@ mod op_check_handles;
 mod op_sync_team;
 use hubcaps::{Credentials, Github, InstallationTokenGenerator, JWTCredentials};
 
-
+/// Github Authentication information for the GitHub app.
+/// When creating the application, the only permission it needs
+/// is Members: Read and Write.
+/// No access to code or other permissions is needed.
 // NOTE: DO NOT MAKE "Debug"! This will leak secrets
 #[derive(Deserialize)]
 pub struct GitHubAuth {
+    /// Overall GitHub Application ID, same for all users
     pub app_id: u64,
-    pub client_id: String,
-    pub client_secret: String,
+
+    /// DER RSA key. Generate with
+    /// `openssl rsa -in private_rsa_key.pem -outform DER -out private_rsa_key.der`
     pub private_key_file: PathBuf,
+
+    /// the ID of the installation of this app in to the repo or
+    /// organization.
     pub installation_id: u64,
 }
 
