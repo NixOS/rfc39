@@ -13,6 +13,9 @@ extern crate serde;
 #[macro_use]
 extern crate lazy_static;
 
+#[macro_use]
+extern crate prometheus;
+
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -29,6 +32,7 @@ mod op_blame_author;
 mod op_check_handles;
 mod op_sync_team;
 use hubcaps::{Credentials, Github, InstallationTokenGenerator, JWTCredentials};
+use prometheus::IntCounter;
 
 /// Github Authentication information for the GitHub app.
 /// When creating the application, the only permission it needs
@@ -49,6 +53,14 @@ pub struct GitHubAuth {
     pub installation_id: u64,
 }
 
+lazy_static! {
+    static ref MAINTAINER_NIX_LOAD_FAILURE_COUNTER: IntCounter = register_int_counter!(
+        "maintainer_nix_load_failure",
+        "Failures to load maintainers.nix"
+    )
+    .unwrap();
+}
+
 fn load_maintainer_file(logger: slog::Logger, src: &Path) -> Result<MaintainerList, ExitError> {
     let maintainers_file = src.canonicalize()?;
 
@@ -65,7 +77,12 @@ fn main() {
 
     let inputs = Options::from_args();
 
-    let maintainers = load_maintainer_file(logger.new(o!()), &inputs.maintainers).unwrap();
+    let maintainers = load_maintainer_file(logger.new(o!()), &inputs.maintainers)
+        .map_err(|d| {
+            MAINTAINER_NIX_LOAD_FAILURE_COUNTER.inc();
+            d
+        })
+        .unwrap();
 
     let github_auth = nix::nix_instantiate_file_to_struct::<GitHubAuth>(
         logger.new(o!()),
