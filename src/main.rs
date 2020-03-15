@@ -44,7 +44,7 @@ use std::time;
 /// No access to code or other permissions is needed.
 // NOTE: DO NOT MAKE "Debug"! This will leak secrets
 #[derive(Deserialize)]
-pub struct GitHubAuth {
+pub struct GitHubAppAuth {
     /// Overall GitHub Application ID, same for all users
     pub app_id: u64,
 
@@ -57,6 +57,15 @@ pub struct GitHubAuth {
     pub installation_id: u64,
 }
 
+/// Use a Personal Access Token to run the `blame` and `check` and
+/// `backfill`. A GitHubAppAuth must be used for the actual syncing.
+/// Needs NO permissions.
+#[derive(Deserialize)]
+pub struct GitHubTokenAuth {
+    /// Personal Access Token
+    pub access_token: String,
+}
+
 fn load_maintainer_file(logger: slog::Logger, src: &Path) -> Result<MaintainerList, ExitError> {
     let maintainers_file = src.canonicalize()?;
 
@@ -66,6 +75,63 @@ fn load_maintainer_file(logger: slog::Logger, src: &Path) -> Result<MaintainerLi
     );
 
     Ok(MaintainerList::load(logger.clone(), &maintainers_file)?)
+}
+
+fn gh_client_from_args(logger: slog::Logger, credential_file: &Path) -> Github {
+    info!(
+        logger,
+        "Loading GitHub authentication information from {:?}", &credential_file
+    );
+
+    let app_auth_load_err: serde_json::error::Error;
+    match nix::nix_instantiate_file_to_struct::<GitHubAppAuth>(logger.new(o!()), credential_file) {
+        Ok(app_auth) => {
+            debug!(logger, "Credential file is providing App Auth.");
+            let mut private_key = Vec::new();
+            File::open(&app_auth.private_key_file)
+                .expect("Opening the private key file")
+                .read_to_end(&mut private_key)
+                .expect("Reading the private key");
+
+            return Github::new(
+                String::from("NixOS/rfcs#39 (hubcaps)"),
+                Credentials::InstallationToken(InstallationTokenGenerator::new(
+                    app_auth.installation_id,
+                    JWTCredentials::new(app_auth.app_id, private_key).unwrap(),
+                )),
+            )
+            .expect("Failed to create a GitHub client from the app auth");
+        }
+        Err(e) => {
+            app_auth_load_err = e;
+        }
+    }
+
+    let token_auth_load_err: serde_json::error::Error;
+    match nix::nix_instantiate_file_to_struct::<GitHubTokenAuth>(logger.new(o!()), credential_file)
+    {
+        Ok(token_auth) => {
+            info!(
+                logger,
+                "Credential file is providing Token Auth, which cannot sync teams."
+            );
+
+            return Github::new(
+                String::from("NixOS/rfcs#39 (hubcaps)"),
+                Credentials::Token(token_auth.access_token),
+            )
+            .expect("Failed to create a GitHub client from the token auth");
+        }
+        Err(e) => {
+            token_auth_load_err = e;
+        }
+    }
+
+    error!(logger, "Credential file is not a valid App or Token auth method";
+           "app_load" => ?app_auth_load_err,
+           "token_load" => ?token_auth_load_err,
+    );
+    panic!("Credential file is not valid App or Token Auth");
 }
 
 fn execute_ops(logger: slog::Logger, inputs: Options) -> Result<(), ExitError> {
@@ -85,26 +151,7 @@ fn execute_ops(logger: slog::Logger, inputs: Options) -> Result<(), ExitError> {
         })
         .unwrap();
 
-    let github_auth = nix::nix_instantiate_file_to_struct::<GitHubAuth>(
-        logger.new(o!()),
-        &inputs.credential_file,
-    )
-    .expect("Failed to parse the credential file");
-
-    let mut private_key = Vec::new();
-    File::open(&github_auth.private_key_file)
-        .expect("Opening the private key file")
-        .read_to_end(&mut private_key)
-        .expect("Reading the private key");
-
-    let github = Github::new(
-        String::from("NixOS/rfcs#39 (hubcaps)"),
-        Credentials::InstallationToken(InstallationTokenGenerator::new(
-            github_auth.installation_id,
-            JWTCredentials::new(github_auth.app_id, private_key).unwrap(),
-        )),
-    )
-    .unwrap();
+    let github = gh_client_from_args(logger.new(o!()), &inputs.credential_file);
 
     match inputs.mode {
         ExecMode::CheckHandles => op_check_handles::check_handles(
