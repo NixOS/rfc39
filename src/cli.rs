@@ -71,6 +71,9 @@ pub struct SyncTeamParams {
     #[structopt(long = "limit")]
     pub limit: Option<u64>,
 
+    /// File to track previously invited users. Setting this parameter
+    /// guarantees that users that have been previously invited and rejected
+    /// will not keep getting spammed.
     #[structopt(long = "invited-list")]
     pub invited_list: Option<PathBuf>,
 }
