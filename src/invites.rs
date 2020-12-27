@@ -6,12 +6,11 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 
 #[cfg_attr(test, derive(Debug, PartialEq))]
-struct Invites {
+pub struct Invites {
     invited: HashSet<GitHubID>,
 }
 
 impl Invites {
-    #[cfg(test)]
     pub fn new() -> Invites {
         Invites {
             invited: HashSet::new(),
@@ -88,7 +87,7 @@ mod tests {
         invites.add_invite(GitHubID::new(0));
         assert!(invites.invited(&GitHubID::new(0)));
 
-        invites.remove_invite(GitHubID::new(0));
+        invites.remove_invite(&GitHubID::new(0));
         assert!(!invites.invited(&GitHubID::new(0)));
     }
 }

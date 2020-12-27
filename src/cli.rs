@@ -70,6 +70,9 @@ pub struct SyncTeamParams {
 
     #[structopt(long = "limit")]
     pub limit: Option<u64>,
+
+    #[structopt(long = "invited-list")]
+    pub invited_list: Option<PathBuf>,
 }
 
 #[derive(Debug, StructOpt)]

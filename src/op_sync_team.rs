@@ -1,4 +1,5 @@
 use crate::cli::ExitError;
+use crate::invites::Invites;
 use crate::maintainers::{GitHubID, GitHubName, Handle, MaintainerList};
 use futures::stream::Stream;
 use hubcaps::teams::{TeamMemberOptions, TeamMemberRole};
@@ -6,6 +7,7 @@ use hubcaps::Github;
 use prometheus::{Histogram, IntCounter, IntGauge};
 use std::collections::HashMap;
 use std::convert::TryInto;
+use std::path::PathBuf;
 use tokio::runtime::Runtime;
 
 lazy_static! {
@@ -36,6 +38,7 @@ pub fn sync_team(
     team_id: u64,
     dry_run: bool,
     limit: Option<u64>,
+    invited_list: Option<PathBuf>,
 ) -> Result<(), ExitError> {
     // initialize the counters :(
     GITHUB_CALLS.get();
@@ -143,6 +146,12 @@ pub fn sync_team(
 
     current_team_member_gauge.set(current_members.len().try_into().unwrap());
 
+    let mut invites = if let Some(ref invited_list) = invited_list {
+        Invites::load(invited_list)?
+    } else {
+        Invites::new()
+    };
+
     debug!(logger, "Fetching existing invitations");
     let pending_invites: Vec<GitHubName> = rt
         .block_on(
@@ -202,19 +211,24 @@ pub fn sync_team(
             }
         }
         match action {
-            TeamAction::Add(github_name, handle) => {
+            TeamAction::Add(github_name, github_id, handle) => {
                 let logger = logger.new(o!(
                     "nixpkgs-handle" => format!("{}", handle),
                     "github-name" => format!("{}", github_name),
                 ));
-                if pending_invites.contains(&github_name) {
+                if pending_invites.contains(&github_name) || invites.invited(&github_id) {
                     noops.inc();
-                    debug!(logger, "User already has a pending invitation");
+                    debug!(logger, "User has already been invited previously and/or still has a pending invitation");
                 } else {
                     additions.inc();
                     info!(logger, "Adding user to the team");
 
                     if do_it_live {
+                        // keep track of the invitation locally so that we don't
+                        // spam users that have already been invited and rejected
+                        // the invitation
+                        invites.add_invite(github_id.clone());
+
                         // verify the ID and name still match
                         let get_user = rt.block_on(
                             github.users().get(&format!("{}", github_name)),
@@ -268,13 +282,15 @@ pub fn sync_team(
                 noops.inc();
                 trace!(logger, "Keeping user on the team");
             }
-            TeamAction::Remove(github_name) => {
+            TeamAction::Remove(github_name, github_id) => {
                 let logger = logger.new(o!(
                     "github-name" => format!("{}", github_name),                ));
 
                 removals.inc();
                 info!(logger, "Removing user from the team");
                 if do_it_live {
+                    invites.remove_invite(&github_id);
+
                     // verify the ID and name still match
                     let get_user = rt
                         .block_on(
@@ -315,6 +331,10 @@ pub fn sync_team(
         }
     }
 
+    if let Some(ref invited_list) = invited_list {
+        invites.save(invited_list)?;
+    }
+
     Ok(())
 }
 
@@ -345,8 +365,8 @@ impl TrackedReactor {
 
 #[derive(Debug, PartialEq)]
 enum TeamAction {
-    Add(GitHubName, Handle),
-    Remove(GitHubName),
+    Add(GitHubName, GitHubID, Handle),
+    Remove(GitHubName, GitHubID),
     Keep(Handle),
 }
 
@@ -379,7 +399,10 @@ fn maintainer_team_diff(
             if teammembers.contains_key(&m.github_id?) {
                 Some((m.github_id?, TeamAction::Keep(handle)))
             } else {
-                Some((m.github_id?, TeamAction::Add(m.github?, handle)))
+                Some((
+                    m.github_id?,
+                    TeamAction::Add(m.github?, m.github_id?, handle),
+                ))
             }
         })
         .collect();
@@ -388,7 +411,10 @@ fn maintainer_team_diff(
         // the diff list already has an entry for who should be in it
         // now create removals for who should no longer be present
         if !diff.contains_key(github_id) {
-            diff.insert(*github_id, TeamAction::Remove(github_name.clone()));
+            diff.insert(
+                *github_id,
+                TeamAction::Remove(github_name.clone(), *github_id),
+            );
         }
     }
 
