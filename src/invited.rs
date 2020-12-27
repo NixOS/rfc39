@@ -6,18 +6,18 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 
 #[cfg_attr(test, derive(Debug, PartialEq))]
-pub struct Invites {
+pub struct Invited {
     invited: HashSet<GitHubID>,
 }
 
-impl Invites {
-    pub fn new() -> Invites {
-        Invites {
+impl Invited {
+    pub fn new() -> Invited {
+        Invited {
             invited: HashSet::new(),
         }
     }
 
-    pub fn load(path: &Path) -> Result<Invites, ExitError> {
+    pub fn load(path: &Path) -> Result<Invited, ExitError> {
         let file = File::open(path)?;
         let lines = BufReader::new(file).lines();
 
@@ -26,7 +26,7 @@ impl Invites {
             invited.insert(GitHubID::new(line?.parse()?));
         }
 
-        Ok(Invites { invited })
+        Ok(Invited { invited })
     }
 
     pub fn save(&self, path: &Path) -> Result<(), ExitError> {
@@ -44,15 +44,15 @@ impl Invites {
         Ok(())
     }
 
-    pub fn invited(&self, id: &GitHubID) -> bool {
+    pub fn contains(&self, id: &GitHubID) -> bool {
         self.invited.contains(id)
     }
 
-    pub fn add_invite(&mut self, id: GitHubID) {
+    pub fn add(&mut self, id: GitHubID) {
         self.invited.insert(id);
     }
 
-    pub fn remove_invite(&mut self, id: &GitHubID) {
+    pub fn remove(&mut self, id: &GitHubID) {
         self.invited.remove(id);
     }
 }
@@ -63,31 +63,31 @@ mod tests {
 
     #[test]
     fn test_load_save() {
-        let mut invites = Invites::new();
+        let mut invited = Invited::new();
         let tmpdir = tempfile::tempdir().unwrap();
-        let tmpfile = tmpdir.path().join("invites.txt");
+        let tmpfile = tmpdir.path().join("invited.txt");
 
         for n in (0..20).step_by(3) {
-            invites.add_invite(GitHubID::new(n));
+            invited.add(GitHubID::new(n));
         }
 
-        invites.save(&tmpfile).unwrap();
+        invited.save(&tmpfile).unwrap();
 
-        let loaded_invites = Invites::load(&tmpfile).unwrap();
+        let loaded_invited = Invited::load(&tmpfile).unwrap();
 
-        assert_eq!(invites, loaded_invites);
+        assert_eq!(invited, loaded_invited);
     }
 
     #[test]
-    fn test_add_remove_invites() {
-        let mut invites = Invites::new();
+    fn test_add_remove_invited() {
+        let mut invited = Invited::new();
 
-        assert!(!invites.invited(&GitHubID::new(0)));
+        assert!(!invited.contains(&GitHubID::new(0)));
 
-        invites.add_invite(GitHubID::new(0));
-        assert!(invites.invited(&GitHubID::new(0)));
+        invited.add(GitHubID::new(0));
+        assert!(invited.contains(&GitHubID::new(0)));
 
-        invites.remove_invite(&GitHubID::new(0));
-        assert!(!invites.invited(&GitHubID::new(0)));
+        invited.remove(&GitHubID::new(0));
+        assert!(!invited.contains(&GitHubID::new(0)));
     }
 }

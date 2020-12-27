@@ -1,5 +1,5 @@
 use crate::cli::ExitError;
-use crate::invites::Invites;
+use crate::invited::Invited;
 use crate::maintainers::{GitHubID, GitHubName, Handle, MaintainerList};
 use futures::stream::Stream;
 use hubcaps::teams::{TeamMemberOptions, TeamMemberRole};
@@ -146,10 +146,10 @@ pub fn sync_team(
 
     current_team_member_gauge.set(current_members.len().try_into().unwrap());
 
-    let mut invites = if let Some(ref invited_list) = invited_list {
-        Invites::load(invited_list)?
+    let mut invited = if let Some(ref invited_list) = invited_list {
+        Invited::load(invited_list)?
     } else {
-        Invites::new()
+        Invited::new()
     };
 
     debug!(logger, "Fetching existing invitations");
@@ -216,7 +216,7 @@ pub fn sync_team(
                     "nixpkgs-handle" => format!("{}", handle),
                     "github-name" => format!("{}", github_name),
                 ));
-                if pending_invites.contains(&github_name) || invites.invited(&github_id) {
+                if pending_invites.contains(&github_name) || invited.contains(&github_id) {
                     noops.inc();
                     debug!(logger, "User has already been invited previously and/or still has a pending invitation");
                 } else {
@@ -227,7 +227,7 @@ pub fn sync_team(
                         // keep track of the invitation locally so that we don't
                         // spam users that have already been invited and rejected
                         // the invitation
-                        invites.add_invite(github_id.clone());
+                        invited.add(github_id.clone());
 
                         // verify the ID and name still match
                         let get_user = rt.block_on(
@@ -289,7 +289,7 @@ pub fn sync_team(
                 removals.inc();
                 info!(logger, "Removing user from the team");
                 if do_it_live {
-                    invites.remove_invite(&github_id);
+                    invited.remove(&github_id);
 
                     // verify the ID and name still match
                     let get_user = rt
@@ -332,7 +332,7 @@ pub fn sync_team(
     }
 
     if let Some(ref invited_list) = invited_list {
-        invites.save(invited_list)?;
+        invited.save(invited_list)?;
     }
 
     Ok(())
