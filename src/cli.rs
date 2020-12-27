@@ -80,13 +80,22 @@ pub struct ListTeamParams {
 #[derive(Debug)]
 pub enum ExitError {
     Io(std::io::Error),
+    InvalidGitHubID(std::num::ParseIntError),
     Serde(serde_json::error::Error),
 }
+
 impl From<std::io::Error> for ExitError {
     fn from(e: std::io::Error) -> Self {
         Self::Io(e)
     }
 }
+
+impl From<std::num::ParseIntError> for ExitError {
+    fn from(e: std::num::ParseIntError) -> Self {
+        Self::InvalidGitHubID(e)
+    }
+}
+
 impl From<serde_json::error::Error> for ExitError {
     fn from(e: serde_json::error::Error) -> Self {
         Self::Serde(e)

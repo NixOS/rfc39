@@ -23,6 +23,7 @@ use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 mod cli;
 use cli::{ExecMode, ExitError, Options};
+mod invites;
 mod maintainers;
 use maintainers::MaintainerList;
 mod filemunge;
