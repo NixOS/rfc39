@@ -1,7 +1,7 @@
 use crate::cli::ExitError;
 use crate::maintainers::GitHubID;
 use std::collections::HashSet;
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 
@@ -18,7 +18,14 @@ impl Invited {
     }
 
     pub fn load(path: &Path) -> Result<Invited, ExitError> {
-        let file = File::open(path)?;
+        // we want to create the file if it doesn't exist even though we won't
+        // be writing to it, this just makes the API easier to use.
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(path)?;
+
         let lines = BufReader::new(file).lines();
 
         let mut invited = HashSet::new();
@@ -76,6 +83,16 @@ mod tests {
         let loaded_invited = Invited::load(&tmpfile).unwrap();
 
         assert_eq!(invited, loaded_invited);
+    }
+
+    #[test]
+    fn test_load_creates_file_if_doesnt_exist() {
+        let tmpdir = tempfile::tempdir().unwrap();
+        let tmpfile = tmpdir.path().join("invited.txt");
+
+        let invited = Invited::load(&tmpfile).unwrap();
+
+        assert_eq!(invited, Invited::new());
     }
 
     #[test]
