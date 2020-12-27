@@ -464,12 +464,16 @@ mod tests {
             vec![
                 (
                     GitHubID::new(1),
-                    TeamAction::Remove(GitHubName::new("alice"))
+                    TeamAction::Remove(GitHubName::new("alice"), GitHubID::new(1))
                 ),
                 (GitHubID::new(2), TeamAction::Keep(Handle::new("bob"))),
                 (
                     GitHubID::new(3),
-                    TeamAction::Add(GitHubName::new("charlie"), Handle::new("charlie"))
+                    TeamAction::Add(
+                        GitHubName::new("charlie"),
+                        GitHubID::new(3),
+                        Handle::new("charlie")
+                    )
                 ),
             ]
             .into_iter()
