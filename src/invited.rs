@@ -78,9 +78,11 @@ impl Invited {
             err
         })?;
 
-        let string = self
-            .invited
-            .iter()
+        let mut values = self.invited.iter().collect::<Vec<_>>();
+        values.sort();
+
+        let string = values
+            .into_iter()
             .map(|id| id.to_string())
             .collect::<Vec<_>>()
             .join("\n");
