@@ -189,6 +189,16 @@ pub fn sync_team(
         register_int_counter!("rfc39_team_sync_additions", "Total team additions").unwrap();
     let removals =
         register_int_counter!("rfc39_team_sync_removals", "Total team removals").unwrap();
+    let pending_invitations = register_int_counter!(
+        "rfc39_team_sync_invite_pending",
+        "Total pending team invitations"
+    )
+    .unwrap();
+    let previously_invited = register_int_counter!(
+        "rfc39_team_sync_previously_invited",
+        "Total users not invited because we know we invited them already"
+    )
+    .unwrap();
     let errors = register_int_counter!("rfc39_team_sync_errors", "Total team errors").unwrap();
     for (github_id, action) in diff {
         let logger = logger.new(o!(
@@ -197,6 +207,8 @@ pub fn sync_team(
             "changed" => additions.get() + removals.get(),
             "additions" => additions.get(),
             "removals" => removals.get(),
+            "pending-invitations" => pending_invitations.get(),
+            "previously-invited" => previously_invited.get(),
             "noops" => noops.get(),
             "errors" => errors.get(),
         ));
@@ -215,9 +227,11 @@ pub fn sync_team(
 
                 if pending_invites.contains(&github_name) {
                     noops.inc();
+                    pending_invitations.inc();
                     debug!(logger, "User already has a pending invitation");
                 } else if invited.contains(&github_id) {
                     noops.inc();
+                    previously_invited.inc();
                     debug!(logger, "User was already invited previously (since there's no pending invitation we can assume the user rejected the invite)");
                 } else {
                     additions.inc();
