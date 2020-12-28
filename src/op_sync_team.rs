@@ -110,6 +110,18 @@ pub fn sync_team(
     )
     .unwrap();
 
+    let invited_list_loaded_gauge: IntGauge = register_int_gauge!(
+        "rfc39_invited_list_loaded",
+        "Number of github ids loaded from the previously invited list"
+    )
+    .unwrap();
+
+    let invited_list_saved_gauge: IntGauge = register_int_gauge!(
+        "rfc39_invited_list_saved",
+        "Number of github ids saved to the previously invited list"
+    )
+    .unwrap();
+
     let mut rt = TrackedReactor {
         rt: Runtime::new().unwrap(),
     };
@@ -147,6 +159,7 @@ pub fn sync_team(
     current_team_member_gauge.set(current_members.len().try_into().unwrap());
 
     let mut invited = Invited::load(logger.clone(), &invited_list)?;
+    invited_list_loaded_gauge.set(invited.len().try_into().unwrap());
 
     debug!(logger, "Fetching existing invitations");
     let pending_invites: Vec<GitHubName> = rt
@@ -348,6 +361,7 @@ pub fn sync_team(
     }
 
     invited.save(&invited_list)?;
+    invited_list_saved_gauge.set(invited.len().try_into().unwrap());
 
     Ok(())
 }

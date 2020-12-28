@@ -96,6 +96,10 @@ impl Invited {
         Ok(())
     }
 
+    pub fn len(&self) -> usize {
+        self.invited.len()
+    }
+
     pub fn contains(&self, id: &GitHubID) -> bool {
         self.invited.contains(id)
     }
@@ -127,6 +131,8 @@ mod tests {
 
         let loaded_invited = Invited::load(rfc39::test_logger(), &tmpfile).unwrap();
 
+        assert_eq!(invited.len(), loaded_invited.len());
+
         assert_eq!(invited, loaded_invited);
     }
 
@@ -147,9 +153,11 @@ mod tests {
         assert!(!invited.contains(&GitHubID::new(0)));
 
         invited.add(GitHubID::new(0));
+        assert_eq!(invited.len(), 1);
         assert!(invited.contains(&GitHubID::new(0)));
 
         invited.remove(&GitHubID::new(0));
+        assert_eq!(invited.len(), 0);
         assert!(!invited.contains(&GitHubID::new(0)));
     }
 }
