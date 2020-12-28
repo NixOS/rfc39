@@ -1,4 +1,5 @@
 use crate::cli::ExitError;
+use crate::invited::Invited;
 use crate::maintainers::{GitHubID, GitHubName, Handle, MaintainerList};
 use futures::stream::Stream;
 use hubcaps::teams::{TeamMemberOptions, TeamMemberRole};
@@ -6,6 +7,7 @@ use hubcaps::Github;
 use prometheus::{Histogram, IntCounter, IntGauge};
 use std::collections::HashMap;
 use std::convert::TryInto;
+use std::path::PathBuf;
 use tokio::runtime::Runtime;
 
 lazy_static! {
@@ -32,6 +34,7 @@ pub fn sync_team(
     logger: slog::Logger,
     github: Github,
     maintainers: MaintainerList,
+    invited_list: PathBuf,
     org: &str,
     team_id: u64,
     dry_run: bool,
@@ -107,6 +110,18 @@ pub fn sync_team(
     )
     .unwrap();
 
+    let invited_list_loaded_gauge: IntGauge = register_int_gauge!(
+        "rfc39_invited_list_loaded",
+        "Number of github ids loaded from the previously invited list"
+    )
+    .unwrap();
+
+    let invited_list_saved_gauge: IntGauge = register_int_gauge!(
+        "rfc39_invited_list_saved",
+        "Number of github ids saved to the previously invited list"
+    )
+    .unwrap();
+
     let mut rt = TrackedReactor {
         rt: Runtime::new().unwrap(),
     };
@@ -142,6 +157,9 @@ pub fn sync_team(
         .collect();
 
     current_team_member_gauge.set(current_members.len().try_into().unwrap());
+
+    let mut invited = Invited::load(logger.clone(), &invited_list)?;
+    invited_list_loaded_gauge.set(invited.len().try_into().unwrap());
 
     debug!(logger, "Fetching existing invitations");
     let pending_invites: Vec<GitHubName> = rt
@@ -184,6 +202,16 @@ pub fn sync_team(
         register_int_counter!("rfc39_team_sync_additions", "Total team additions").unwrap();
     let removals =
         register_int_counter!("rfc39_team_sync_removals", "Total team removals").unwrap();
+    let pending_invitations = register_int_counter!(
+        "rfc39_team_sync_invite_pending",
+        "Total pending team invitations"
+    )
+    .unwrap();
+    let previously_invited = register_int_counter!(
+        "rfc39_team_sync_previously_invited",
+        "Total users not invited because we know we invited them already"
+    )
+    .unwrap();
     let errors = register_int_counter!("rfc39_team_sync_errors", "Total team errors").unwrap();
     for (github_id, action) in diff {
         let logger = logger.new(o!(
@@ -192,24 +220,32 @@ pub fn sync_team(
             "changed" => additions.get() + removals.get(),
             "additions" => additions.get(),
             "removals" => removals.get(),
+            "pending-invitations" => pending_invitations.get(),
+            "previously-invited" => previously_invited.get(),
             "noops" => noops.get(),
             "errors" => errors.get(),
         ));
         if let Some(limit) = limit {
             if (additions.get() + removals.get()) >= limit {
                 info!(logger, "Hit maximum change limit");
-                return Ok(());
+                break;
             }
         }
         match action {
-            TeamAction::Add(github_name, handle) => {
+            TeamAction::Add(github_name, github_id, handle) => {
                 let logger = logger.new(o!(
                     "nixpkgs-handle" => format!("{}", handle),
                     "github-name" => format!("{}", github_name),
                 ));
+
                 if pending_invites.contains(&github_name) {
                     noops.inc();
+                    pending_invitations.inc();
                     debug!(logger, "User already has a pending invitation");
+                } else if invited.contains(&github_id) {
+                    noops.inc();
+                    previously_invited.inc();
+                    debug!(logger, "User was already invited previously (since there's no pending invitation we can assume the user rejected the invite)");
                 } else {
                     additions.inc();
                     info!(logger, "Adding user to the team");
@@ -249,11 +285,15 @@ pub fn sync_team(
                             );
 
                             match add_attempt {
-                                Ok(_) => (),
+                                Ok(_) => {
+                                    // keep track of the invitation locally so that we don't
+                                    // spam users that have already been invited and rejected
+                                    // the invitation
+                                    invited.add(github_id.clone());
+                                }
                                 Err(e) => {
                                     errors.inc();
-                                    warn!(logger, "Failed to add a user to the team, not decrementing additions as it may have succeeded: {:#?}", e
-                                    );
+                                    warn!(logger, "Failed to add a user to the team, not decrementing additions as it may have succeeded: {:#?}", e);
                                 }
                             }
                         }
@@ -268,7 +308,7 @@ pub fn sync_team(
                 noops.inc();
                 trace!(logger, "Keeping user on the team");
             }
-            TeamAction::Remove(github_name) => {
+            TeamAction::Remove(github_name, github_id) => {
                 let logger = logger.new(o!(
                     "github-name" => format!("{}", github_name),                ));
 
@@ -300,20 +340,28 @@ pub fn sync_team(
                             }
                         });
 
-                    if let Ok(Some(_user)) = get_user {
-                        if let Err(e) = rt.block_on(
+                    if let Ok(Some(_)) = get_user {
+                        let remove_attempt = rt.block_on(
                             team_actions.remove_user(&format!("{}", github_name)),
                             &github_remove_user_histogram,
                             &github_remove_user_failures,
-                        ) {
-                            errors.inc();
-                            warn!(logger, "Failed to remove a user from the team: {:#?}", e);
+                        );
+
+                        match remove_attempt {
+                            Ok(_) => invited.remove(&github_id),
+                            Err(e) => {
+                                errors.inc();
+                                warn!(logger, "Failed to remove a user from the team: {:#?}", e);
+                            }
                         }
                     }
                 }
             }
         }
     }
+
+    invited.save(&invited_list)?;
+    invited_list_saved_gauge.set(invited.len().try_into().unwrap());
 
     Ok(())
 }
@@ -345,8 +393,8 @@ impl TrackedReactor {
 
 #[derive(Debug, PartialEq)]
 enum TeamAction {
-    Add(GitHubName, Handle),
-    Remove(GitHubName),
+    Add(GitHubName, GitHubID, Handle),
+    Remove(GitHubName, GitHubID),
     Keep(Handle),
 }
 
@@ -379,7 +427,10 @@ fn maintainer_team_diff(
             if teammembers.contains_key(&m.github_id?) {
                 Some((m.github_id?, TeamAction::Keep(handle)))
             } else {
-                Some((m.github_id?, TeamAction::Add(m.github?, handle)))
+                Some((
+                    m.github_id?,
+                    TeamAction::Add(m.github?, m.github_id?, handle),
+                ))
             }
         })
         .collect();
@@ -388,7 +439,10 @@ fn maintainer_team_diff(
         // the diff list already has an entry for who should be in it
         // now create removals for who should no longer be present
         if !diff.contains_key(github_id) {
-            diff.insert(*github_id, TeamAction::Remove(github_name.clone()));
+            diff.insert(
+                *github_id,
+                TeamAction::Remove(github_name.clone(), *github_id),
+            );
         }
     }
 
@@ -438,12 +492,16 @@ mod tests {
             vec![
                 (
                     GitHubID::new(1),
-                    TeamAction::Remove(GitHubName::new("alice"))
+                    TeamAction::Remove(GitHubName::new("alice"), GitHubID::new(1))
                 ),
                 (GitHubID::new(2), TeamAction::Keep(Handle::new("bob"))),
                 (
                     GitHubID::new(3),
-                    TeamAction::Add(GitHubName::new("charlie"), Handle::new("charlie"))
+                    TeamAction::Add(
+                        GitHubName::new("charlie"),
+                        GitHubID::new(3),
+                        Handle::new("charlie")
+                    )
                 ),
             ]
             .into_iter()

@@ -23,6 +23,7 @@ use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 mod cli;
 use cli::{ExecMode, ExitError, Options};
+mod invited;
 mod maintainers;
 use maintainers::MaintainerList;
 mod filemunge;
@@ -174,6 +175,7 @@ fn execute_ops(logger: slog::Logger, inputs: Options) -> Result<(), ExitError> {
             logger.new(o!("exec-mode" => "SyncTeam")),
             github,
             maintainers,
+            team_info.invited_list,
             &team_info.organization,
             team_info.team_id,
             team_info.dry_run,

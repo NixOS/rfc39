@@ -50,7 +50,7 @@ where
         cmd.arg(val);
     }
 
-    let output = cmd.output().expect("F;ailed to start nix-instantiate!");
+    let output = cmd.output().expect("Failed to start nix-instantiate!");
 
     if !output.stderr.is_empty() {
         warn!(logger, "Stderr from nix-instantiate";

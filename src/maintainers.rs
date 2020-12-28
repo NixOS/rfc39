@@ -53,7 +53,7 @@ impl GitHubName {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone, Deserialize)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone, Deserialize)]
 pub struct GitHubID(u64);
 impl std::fmt::Display for GitHubID {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
