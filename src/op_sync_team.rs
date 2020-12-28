@@ -216,9 +216,13 @@ pub fn sync_team(
                     "nixpkgs-handle" => format!("{}", handle),
                     "github-name" => format!("{}", github_name),
                 ));
-                if pending_invites.contains(&github_name) || invited.contains(&github_id) {
+
+                if pending_invites.contains(&github_name) {
                     noops.inc();
-                    debug!(logger, "User has already been invited previously and/or still has a pending invitation");
+                    debug!(logger, "User already has a pending invitation");
+                } else if invited.contains(&github_id) {
+                    noops.inc();
+                    debug!(logger, "User was already invited previously (since there's no pending invitation we can assume the user rejected the invite)");
                 } else {
                     additions.inc();
                     info!(logger, "Adding user to the team");
