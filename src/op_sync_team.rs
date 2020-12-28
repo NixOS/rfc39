@@ -34,11 +34,11 @@ pub fn sync_team(
     logger: slog::Logger,
     github: Github,
     maintainers: MaintainerList,
+    invited_list: PathBuf,
     org: &str,
     team_id: u64,
     dry_run: bool,
     limit: Option<u64>,
-    invited_list: Option<PathBuf>,
 ) -> Result<(), ExitError> {
     // initialize the counters :(
     GITHUB_CALLS.get();
@@ -146,11 +146,7 @@ pub fn sync_team(
 
     current_team_member_gauge.set(current_members.len().try_into().unwrap());
 
-    let mut invited = if let Some(ref invited_list) = invited_list {
-        Invited::load(invited_list)?
-    } else {
-        Invited::new()
-    };
+    let mut invited = Invited::load(&invited_list)?;
 
     debug!(logger, "Fetching existing invitations");
     let pending_invites: Vec<GitHubName> = rt
@@ -337,9 +333,7 @@ pub fn sync_team(
         }
     }
 
-    if let Some(ref invited_list) = invited_list {
-        invited.save(invited_list)?;
-    }
+    invited.save(&invited_list)?;
 
     Ok(())
 }

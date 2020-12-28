@@ -175,11 +175,11 @@ fn execute_ops(logger: slog::Logger, inputs: Options) -> Result<(), ExitError> {
             logger.new(o!("exec-mode" => "SyncTeam")),
             github,
             maintainers,
+            team_info.invited_list,
             &team_info.organization,
             team_info.team_id,
             team_info.dry_run,
             team_info.limit,
-            team_info.invited_list,
         ),
         ExecMode::ListTeams(team_info) => op_sync_team::list_teams(github, &team_info.organization),
     }

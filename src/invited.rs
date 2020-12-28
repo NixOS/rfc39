@@ -11,6 +11,7 @@ pub struct Invited {
 }
 
 impl Invited {
+    #[cfg(test)]
     pub fn new() -> Invited {
         Invited {
             invited: HashSet::new(),

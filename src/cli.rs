@@ -75,7 +75,7 @@ pub struct SyncTeamParams {
     /// guarantees that users that have been previously invited and rejected
     /// will not keep getting spammed.
     #[structopt(long = "invited-list", parse(from_os_str))]
-    pub invited_list: Option<PathBuf>,
+    pub invited_list: PathBuf,
 }
 
 #[derive(Debug, StructOpt)]
