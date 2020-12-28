@@ -224,11 +224,6 @@ pub fn sync_team(
                     info!(logger, "Adding user to the team");
 
                     if do_it_live {
-                        // keep track of the invitation locally so that we don't
-                        // spam users that have already been invited and rejected
-                        // the invitation
-                        invited.add(github_id.clone());
-
                         // verify the ID and name still match
                         let get_user = rt.block_on(
                             github.users().get(&format!("{}", github_name)),
@@ -263,11 +258,15 @@ pub fn sync_team(
                             );
 
                             match add_attempt {
-                                Ok(_) => (),
+                                Ok(_) => {
+                                    // keep track of the invitation locally so that we don't
+                                    // spam users that have already been invited and rejected
+                                    // the invitation
+                                    invited.add(github_id.clone());
+                                }
                                 Err(e) => {
                                     errors.inc();
-                                    warn!(logger, "Failed to add a user to the team, not decrementing additions as it may have succeeded: {:#?}", e
-                                    );
+                                    warn!(logger, "Failed to add a user to the team, not decrementing additions as it may have succeeded: {:#?}", e);
                                 }
                             }
                         }
@@ -289,8 +288,6 @@ pub fn sync_team(
                 removals.inc();
                 info!(logger, "Removing user from the team");
                 if do_it_live {
-                    invited.remove(&github_id);
-
                     // verify the ID and name still match
                     let get_user = rt
                         .block_on(
@@ -316,14 +313,19 @@ pub fn sync_team(
                             }
                         });
 
-                    if let Ok(Some(_user)) = get_user {
-                        if let Err(e) = rt.block_on(
+                    if let Ok(Some(_)) = get_user {
+                        let remove_attempt = rt.block_on(
                             team_actions.remove_user(&format!("{}", github_name)),
                             &github_remove_user_histogram,
                             &github_remove_user_failures,
-                        ) {
-                            errors.inc();
-                            warn!(logger, "Failed to remove a user from the team: {:#?}", e);
+                        );
+
+                        match remove_attempt {
+                            Ok(_) => invited.remove(&github_id),
+                            Err(e) => {
+                                errors.inc();
+                                warn!(logger, "Failed to remove a user from the team: {:#?}", e);
+                            }
                         }
                     }
                 }
