@@ -5,40 +5,78 @@ use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 
-#[cfg_attr(test, derive(Debug, PartialEq))]
+#[cfg_attr(test, derive(Debug))]
 pub struct Invited {
     invited: HashSet<GitHubID>,
+    logger: slog::Logger,
+}
+
+#[cfg(test)]
+impl PartialEq for Invited {
+    fn eq(&self, other: &Self) -> bool {
+        self.invited == other.invited
+    }
 }
 
 impl Invited {
     #[cfg(test)]
-    pub fn new() -> Invited {
+    pub fn new(logger: slog::Logger) -> Invited {
         Invited {
             invited: HashSet::new(),
+            logger,
         }
     }
 
-    pub fn load(path: &Path) -> Result<Invited, ExitError> {
+    pub fn load(logger: slog::Logger, path: &Path) -> Result<Invited, ExitError> {
         // we want to create the file if it doesn't exist even though we won't
         // be writing to it, this just makes the API easier to use.
         let file = OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
-            .open(path)?;
+            .open(path)
+            .map_err(|err| {
+                error!(
+                    logger,
+                    "Failed to open invited list file {:?}: {:?}", path, err
+                );
+                err
+            })?;
 
         let lines = BufReader::new(file).lines();
 
         let mut invited = HashSet::new();
         for line in lines {
-            invited.insert(GitHubID::new(line?.parse()?));
+            let line = line.map_err(|err| {
+                error!(
+                    logger,
+                    "Failed to read line from invited list file {:?}: {:?}", path, err
+                );
+                err
+            })?;
+
+            let id = line.parse().map_err(|err| {
+                error!(
+                    logger,
+                    "Failed to parse invited maintainer github id: {:?}", err
+                );
+                err
+            })?;
+
+            invited.insert(GitHubID::new(id));
         }
 
-        Ok(Invited { invited })
+        Ok(Invited { invited, logger })
     }
 
     pub fn save(&self, path: &Path) -> Result<(), ExitError> {
-        let mut file = File::create(path)?;
+        let mut file = File::create(path).map_err(|err| {
+            error!(
+                self.logger,
+                "Failed to create invited list file {:?}: {:?}", path, err,
+            );
+            err
+        })?;
 
         let string = self
             .invited
@@ -47,7 +85,13 @@ impl Invited {
             .collect::<Vec<_>>()
             .join("\n");
 
-        file.write_all(string.as_ref())?;
+        file.write_all(string.as_ref()).map_err(|err| {
+            error!(
+                self.logger,
+                "Failed to write invited list file {:?}: {:?}", path, err
+            );
+            err
+        })?;
 
         Ok(())
     }
@@ -71,7 +115,7 @@ mod tests {
 
     #[test]
     fn test_load_save() {
-        let mut invited = Invited::new();
+        let mut invited = Invited::new(rfc39::test_logger());
         let tmpdir = tempfile::tempdir().unwrap();
         let tmpfile = tmpdir.path().join("invited.txt");
 
@@ -81,7 +125,7 @@ mod tests {
 
         invited.save(&tmpfile).unwrap();
 
-        let loaded_invited = Invited::load(&tmpfile).unwrap();
+        let loaded_invited = Invited::load(rfc39::test_logger(), &tmpfile).unwrap();
 
         assert_eq!(invited, loaded_invited);
     }
@@ -91,14 +135,14 @@ mod tests {
         let tmpdir = tempfile::tempdir().unwrap();
         let tmpfile = tmpdir.path().join("invited.txt");
 
-        let invited = Invited::load(&tmpfile).unwrap();
+        let invited = Invited::load(rfc39::test_logger(), &tmpfile).unwrap();
 
-        assert_eq!(invited, Invited::new());
+        assert_eq!(invited, Invited::new(rfc39::test_logger()));
     }
 
     #[test]
     fn test_add_remove_invited() {
-        let mut invited = Invited::new();
+        let mut invited = Invited::new(rfc39::test_logger());
 
         assert!(!invited.contains(&GitHubID::new(0)));
 

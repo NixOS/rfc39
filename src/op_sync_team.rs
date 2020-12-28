@@ -146,7 +146,7 @@ pub fn sync_team(
 
     current_team_member_gauge.set(current_members.len().try_into().unwrap());
 
-    let mut invited = Invited::load(&invited_list)?;
+    let mut invited = Invited::load(logger.clone(), &invited_list)?;
 
     debug!(logger, "Fetching existing invitations");
     let pending_invites: Vec<GitHubName> = rt
