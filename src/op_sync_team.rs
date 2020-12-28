@@ -228,7 +228,7 @@ pub fn sync_team(
         if let Some(limit) = limit {
             if (additions.get() + removals.get()) >= limit {
                 info!(logger, "Hit maximum change limit");
-                return Ok(());
+                break;
             }
         }
         match action {
