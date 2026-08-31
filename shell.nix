@@ -14,7 +14,7 @@ pkgs.mkShell {
     latest.rustChannels.stable.rust
     git
     openssl
-    pkgconfig
+    pkg-config
     crate2nix
   ];
 
