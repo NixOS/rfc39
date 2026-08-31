@@ -11,6 +11,8 @@ pkgs.mkShell {
     crate2nix
   ];
 
-  RUST_BACKTRACE = "1";
-  NIX_PATH = "nixpkgs=${pkgs.path}";
+  env = {
+    RUST_BACKTRACE = "1";
+    NIX_PATH = "nixpkgs=${pkgs.path}";
+  };
 }
