@@ -55,6 +55,10 @@ impl Invited {
                 err
             })?;
 
+            if line.is_empty() {
+                continue
+            }
+
             let id = line.parse().map_err(|err| {
                 error!(
                     logger,
@@ -81,11 +85,15 @@ impl Invited {
         let mut values = self.invited.iter().collect::<Vec<_>>();
         values.sort();
 
-        let string = values
+        let mut string = values
             .into_iter()
             .map(|id| id.to_string())
             .collect::<Vec<_>>()
             .join("\n");
+
+        if !string.ends_with('\n') {
+            string.push('\n')
+        }
 
         file.write_all(string.as_ref()).map_err(|err| {
             error!(
