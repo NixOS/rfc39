@@ -13,6 +13,7 @@ pkgs.mkShell {
 
   env = {
     RUST_BACKTRACE = "1";
+    RUST_SRC_PATH = "${pkgs.rustPackages.rustPlatform.rustLibSrc}";
     NIX_PATH = "nixpkgs=${pkgs.path}";
   };
 }
